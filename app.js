@@ -1,5 +1,6 @@
 // VIRTUOSO bug: https://github.com/openlink/virtuoso-opensource/issues/515
 import mu from 'mu';
+import { querySudo, updateSudo } from '@lblod/mu-auth-sudo';
 import { ok } from 'assert';
 import cors from 'cors';
 const uuidv4 = require('uuid/v4');
@@ -9,7 +10,7 @@ const app = mu.app;
 const moment = require('moment');
 const bodyParser = require('body-parser');
 
-app.use(cors())
+app.use(cors());
 app.use(bodyParser.json({ type: 'application/*+json' }))
 
 app.post('/approveAgenda', async (req, res) => {
@@ -53,7 +54,7 @@ async function getSubcasePhaseCode() {
 		}
 	}
 `
-	const data = await mu.query(query).catch(err => { console.error(err) });
+	const data = await querySudo(query).catch(err => { console.error(err) });
 	console.log(data);
 	return data.results.bindings[0].code.value;
 }
@@ -81,7 +82,7 @@ async function getSubcasePhasesOfAgenda(newAgendaId, codeURI) {
 		}
 	}
 `
-	return await mu.query(query).catch(err => { console.error(err) });
+	return await querySudo(query).catch(err => { console.error(err) });
 }
 
 async function markAgendaItemsPartOfAgendaA(agendaId) {
@@ -108,7 +109,7 @@ async function markAgendaItemsPartOfAgendaA(agendaId) {
 			?agenda dct:hasPart ?agendaItem .
 		}
 	}`;
-	return await mu.query(query).catch(err => { console.error(err) });
+	return await querySudo(query).catch(err => { console.error(err) });
 };
 
 async function storeAgendaItemNumbers(agendaId) {
@@ -135,7 +136,7 @@ async function storeAgendaItemNumbers(agendaId) {
 			}
 		}
 	} ORDER BY ?priorityOrMax`;
-	const sortedAgendaItemsToName = await mu.query(query).catch(err => { console.error(err) });
+	const sortedAgendaItemsToName = await querySudo(query).catch(err => { console.error(err) });
 	const triples = [];
 	sortedAgendaItemsToName.results.bindings.map((binding, index) => {
 		triples.push(`<${binding['agendaItem'].value}> ext:agendaItemNumber ${maxAgendaItemNumberSoFar + index} .`);
@@ -154,7 +155,7 @@ async function storeAgendaItemNumbers(agendaId) {
 			${triples.join("\n")}
 		}
 	}`;
-	await mu.query(query).catch(err => { console.log(err); })
+	await querySudo(query).catch(err => { console.log(err); })
 };
 
 async function getHighestAgendaItemNumber(agendaId) {
@@ -174,7 +175,7 @@ async function getHighestAgendaItemNumber(agendaId) {
 			?agendaItem ext:agendaItemNumber ?number .
 		}
 	} GROUP BY ?agenda`;
-	const response = await mu.query(query).catch(err => { console.error(err) });
+	const response = await querySudo(query).catch(err => { console.error(err) });
 	return parseInt(((response.results.bindings[0] || {})['max'] || {}).value || 0);
 };
 
@@ -219,7 +220,7 @@ async function nameDocumentsBasedOnAgenda(agendaId) {
 	} ORDER BY ?agendaItem
 	`;
 
-	const response = await mu.query(query).catch(err => { console.error(err) });
+	const response = await querySudo(query).catch(err => { console.error(err) });
 	let previousAgendaItem = null;
 	let previousStartingIndex = 0;
 	let triples = [];
@@ -246,7 +247,7 @@ async function nameDocumentsBasedOnAgenda(agendaId) {
 		return;
 	}
 
-	await mu.query(`PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+	await querySudo(`PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 	PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 	PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 	PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
@@ -303,7 +304,7 @@ async function createNewSubcasesPhase(codeURI, subcaseListOfURIS) {
 		ext:procedurestapFaseCode <${codeURI}> .
 		<${subcaseURI}> ext:subcaseProcedurestapFase <${newURI}> .
 		`
-	})
+	});
 
 	const insertString = listOfQueries.join(' ');
 	console.log(insertString);
@@ -321,9 +322,9 @@ async function createNewSubcasesPhase(codeURI, subcaseListOfURIS) {
 					${insertString}
 	 }
 	};
-`
+`;
 
-	return await mu.update(query).catch(err => { console.error(err) });
+	return await updateSudo(query).catch(err => { console.error(err) });
 }
 
 async function getNewAgendaURI(newAgendaId) {
@@ -340,7 +341,7 @@ async function getNewAgendaURI(newAgendaId) {
  	}
  `
 
-	const data = await mu.query(query).catch(err => { console.error(err) });
+	const data = await querySudo(query).catch(err => { console.error(err) });
 	return data.results.bindings[0].agenda.value;
 }
 
@@ -373,7 +374,7 @@ async function copyAgendaItems(oldId, newUri) {
 		BIND(STRAFTER(STR(?newURI), "http://kanselarij.vo.data.gift/id/agendapunten/") AS ?newUuid) 
 	}`
 
-	await mu.update(createNewUris).catch(err => { console.error(err) });
+	await updateSudo(createNewUris).catch(err => { console.error(err) });
 
 	const moveProperties = `
 	PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -402,7 +403,7 @@ async function copyAgendaItems(oldId, newUri) {
 		}
 	}`
 
-	return await mu.update(moveProperties).catch(err => { console.error(err) });
+	return await updateSudo(moveProperties).catch(err => { console.error(err) });
 }
 
 const parseSparqlResults = (data) => {
