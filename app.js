@@ -1,6 +1,5 @@
 // VIRTUOSO bug: https://github.com/openlink/virtuoso-opensource/issues/515
 import mu from 'mu';
-import { querySudo, updateSudo } from '@lblod/mu-auth-sudo';
 import { ok } from 'assert';
 import cors from 'cors';
 const uuidv4 = require('uuid/v4');
@@ -53,8 +52,8 @@ async function getSubcasePhaseCode() {
            				FILTER(UCASE(?label) = UCASE("geagendeerd"))  
 		}
 	}
-`
-	const data = await querySudo(query).catch(err => { console.error(err) });
+`;
+	const data = await mu.query(query).catch(err => { console.error(err) });
 	console.log(data);
 	return data.results.bindings[0].code.value;
 }
@@ -81,8 +80,8 @@ async function getSubcasePhasesOfAgenda(newAgendaId, codeURI) {
 								}	 
 		}
 	}
-`
-	return await querySudo(query).catch(err => { console.error(err) });
+`;
+	return await mu.query(query).catch(err => { console.error(err) });
 }
 
 async function markAgendaItemsPartOfAgendaA(agendaId) {
@@ -109,7 +108,7 @@ async function markAgendaItemsPartOfAgendaA(agendaId) {
 			?agenda dct:hasPart ?agendaItem .
 		}
 	}`;
-	return await querySudo(query).catch(err => { console.error(err) });
+	return await mu.query(query).catch(err => { console.error(err) });
 }
 
 async function storeAgendaItemNumbers(agendaId) {
@@ -136,7 +135,7 @@ async function storeAgendaItemNumbers(agendaId) {
 			}
 		}
 	} ORDER BY ?priorityOrMax`;
-	const sortedAgendaItemsToName = await querySudo(query).catch(err => { console.error(err) });
+	const sortedAgendaItemsToName = await mu.query(query).catch(err => { console.error(err) });
 	const triples = [];
 	sortedAgendaItemsToName.results.bindings.map((binding, index) => {
 		triples.push(`<${binding['agendaItem'].value}> ext:agendaItemNumber ${maxAgendaItemNumberSoFar + index} .`);
@@ -155,7 +154,7 @@ async function storeAgendaItemNumbers(agendaId) {
 			${triples.join("\n")}
 		}
 	}`;
-	await querySudo(query).catch(err => { console.log(err); })
+	await mu.query(query).catch(err => { console.log(err); })
 }
 
 async function getHighestAgendaItemNumber(agendaId) {
@@ -180,7 +179,7 @@ async function getHighestAgendaItemNumber(agendaId) {
 			?agendaItem ext:agendaItemNumber ?number .
 		}
 	} GROUP BY ?agenda`;
-	const response = await querySudo(query).catch(err => { console.error(err) });
+	const response = await mu.query(query).catch(err => { console.error(err) });
 	return parseInt(((response.results.bindings[0] || {})['max'] || {}).value || 0);
 }
 
@@ -234,7 +233,7 @@ async function getUnnamedDocumentsOfAgenda(agendaId) {
 	} ORDER BY ?agendaItem ?documentPriority
 	`;
 
-	return await querySudo(query).catch(err => { console.error(err) });
+	return await mu.query(query).catch(err => { console.error(err) });
 }
 
 function getBindingValue(binding, property, fallback){
@@ -287,7 +286,7 @@ async function nameDocumentsBasedOnAgenda(agendaId) {
 		return;
 	}
 
-	await querySudo(`PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+	await mu.query(`PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 	PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 	PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 	PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
@@ -300,7 +299,7 @@ async function nameDocumentsBasedOnAgenda(agendaId) {
 					${triples.join("\n")}
 	 }
 	};`).catch(err => { console.error(err); });
-};
+}
 
 function paddNumberWithZeros(number, length) {
 	let string = "" + number;
@@ -364,7 +363,7 @@ async function createNewSubcasesPhase(codeURI, subcaseListOfURIS) {
 	};
 `;
 
-	return await updateSudo(query).catch(err => { console.error(err) });
+	return await mu.update(query).catch(err => { console.error(err) });
 }
 
 async function getNewAgendaURI(newAgendaId) {
@@ -379,9 +378,9 @@ async function getNewAgendaURI(newAgendaId) {
    		mu:uuid "${newAgendaId}" .
   	}
  	}
- `
+ `;
 
-	const data = await querySudo(query).catch(err => { console.error(err) });
+	const data = await mu.query(query).catch(err => { console.error(err) });
 	return data.results.bindings[0].agenda.value;
 }
 
@@ -412,9 +411,9 @@ async function copyAgendaItems(oldId, newUri) {
 
 		} } }
 		BIND(STRAFTER(STR(?newURI), "http://kanselarij.vo.data.gift/id/agendapunten/") AS ?newUuid) 
-	}`
+	}`;
 
-	await updateSudo(createNewUris).catch(err => { console.error(err) });
+	await mu.update(createNewUris).catch(err => { console.error(err) });
 
 	const moveProperties = `
 	PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -441,9 +440,9 @@ async function copyAgendaItems(oldId, newUri) {
 			?s ?p2 ?previousURI .
 			FILTER(?p2 != dct:hasPart)
 		}
-	}`
+	}`;
 
-	return await updateSudo(moveProperties).catch(err => { console.error(err) });
+	return await mu.update(moveProperties).catch(err => { console.error(err) });
 }
 
 const parseSparqlResults = (data) => {
