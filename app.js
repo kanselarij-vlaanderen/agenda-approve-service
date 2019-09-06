@@ -8,6 +8,14 @@ const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
 const app = mu.app;
 const moment = require('moment');
 const bodyParser = require('body-parser');
+const originalQuery = mu.query;
+
+mu.query = function(query) {
+	return originalQuery(query).catch((error) => {
+		console.log(`error during query ${query}: ${error}`);
+		throw error;
+	});
+};
 
 app.use(cors());
 app.use(bodyParser.json({ type: 'application/*+json' }))
