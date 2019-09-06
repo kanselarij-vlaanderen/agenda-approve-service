@@ -3,7 +3,7 @@ import mu from 'mu';
 import { ok } from 'assert';
 import cors from 'cors';
 const uuidv4 = require('uuid/v4');
-const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
+const targetGraph = "http://mu.semte.ch/graphs/application";
 
 const app = mu.app;
 const moment = require('moment');
@@ -18,7 +18,7 @@ mu.query = function(query) {
 };
 
 app.use(cors());
-app.use(bodyParser.json({ type: 'application/*+json' }))
+app.use(bodyParser.json({ type: 'application/*+json' }));
 
 app.post('/approveAgenda', async (req, res) => {
 	const newAgendaId = req.body.newAgendaId;
@@ -200,7 +200,7 @@ async function getUnnamedDocumentsOfAgenda(agendaId) {
 	PREFIX dct: <http://purl.org/dc/terms/>
 	PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 	
-	SELECT ?agendaItem ?existingNumbers ?document ?number ?zittingDate ?dossierType WHERE {
+	SELECT ?agendaItem ?existingNumbers ?document ?number ?zittingDate ?dossierType ?announcement WHERE {
 		GRAPH <${targetGraph}> {
 			?agenda a besluitvorming:Agenda .
 			?agenda mu:uuid "${agendaId}" .
@@ -208,6 +208,13 @@ async function getUnnamedDocumentsOfAgenda(agendaId) {
 			?zitting besluit:geplandeStart ?zittingDate .
 			?agenda dct:hasPart ?agendaItem .
 			?agendaItem ext:bevatAgendapuntDocumentversie ?documentVersion .
+			?document besluitvorming:heeftVersie ?documentVersion .
+			?agendaItem ext:agendaItemNumber ?number .
+
+      FILTER NOT EXISTS {
+        ?document besluitvorming:stuknummerVR ?vrnumber .
+      }
+
 			OPTIONAL {
 			  ?agendaItem ext:wordtGetoondAlsMededeling ?announcement .
 			}
@@ -218,25 +225,18 @@ async function getUnnamedDocumentsOfAgenda(agendaId) {
 				  ?case dct:type ?dossierType .
 				}
 			}
-			?document besluitvorming:heeftVersie ?documentVersion .
-			FILTER NOT EXISTS {
-				?document besluitvorming:stuknummerVR ?vrnumber .
-			}
 			OPTIONAL {
-			  ?document ext:documentType ?docType.
-			  ?docType ext:prioriteit ?documentPriority
+			  ?document ext:documentType ?docType .
+			  ?docType ext:prioriteit ?prio .
 			}
-			BIND(IF(BOUND(?documentPriority), ?documentPriority, 1000000) AS ?documentPriority)
+			BIND(IF(BOUND(?prio), ?prio, 1000000) AS ?documentPriority)
 
 			{ SELECT ?agendaItem (COUNT(DISTINCT(?othervrnumber)) AS ?existingNumbers) WHERE {
-				GRAPH <${targetGraph}> {
 					?agendaItem ext:bevatAgendapuntDocumentversie ?otherVersion .
 					?otherDocument besluitvorming:heeftVersie ?otherVersion .
 					OPTIONAL { ?otherDocument besluitvorming:stuknummerVR ?othervrnumber . }
-				}
 			} GROUP BY ?agendaItem }
 			
-			?agendaItem ext:agendaItemNumber ?number.
 		}
 	} ORDER BY ?agendaItem ?documentPriority
 	`;
