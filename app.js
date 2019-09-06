@@ -149,6 +149,10 @@ async function storeAgendaItemNumbers(agendaId) {
 		triples.push(`<${binding['agendaItem'].value}> ext:agendaItemNumber ${maxAgendaItemNumberSoFar + index} .`);
 	});
 
+	if(triples.length < 1){
+		return;
+	}
+
 	query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 	PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 	PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
@@ -352,6 +356,10 @@ async function createNewSubcasesPhase(codeURI, subcaseListOfURIS) {
 		<${subcaseURI}> ext:subcaseProcedurestapFase <${newURI}> .
 		`
 	});
+
+	if(listOfQueries.length < 1){
+		return;
+	}
 
 	const insertString = listOfQueries.join(' ');
 	console.log(insertString);
