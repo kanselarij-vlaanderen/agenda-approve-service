@@ -29,7 +29,7 @@ app.post('/approveAgenda', async (req, res) => {
 
 	await markAgendaItemsPartOfAgendaA(oldAgendaId);
 	await storeAgendaItemNumbers(oldAgendaId);
-	await nameDocumentsBasedOnAgenda(oldAgendaId);
+	// await nameDocumentsBasedOnAgenda(oldAgendaId);
 
 	try {
 		const codeURI = await getSubcasePhaseCode();
