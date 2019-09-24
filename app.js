@@ -416,13 +416,14 @@ async function copyAgendaItems(oldUri, newUri) {
   }`;
 
   await mu.update(createNewUris);
-  return updatePropertiesOnAgendaItemsBatched();
+  return updatePropertiesOnAgendaItemsBatched(newUri);
 }
 
-const updatePropertiesOnAgendaItemsBatched = async function(){
+const updatePropertiesOnAgendaItemsBatched = async function(agendaUri){
   const selectTargets = `  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   SELECT ?target WHERE {
+    <${agendaUri}> dct:hasPart ?target .
     ?target ext:replacesPrevious ?previousURI.
     FILTER NOT EXISTS {
       ?target a besluit:Agendapunt .
@@ -479,7 +480,7 @@ const updatePropertiesOnAgendaItemsBatched = async function(){
   }`;
 	await mu.update(movePropertiesRight);
 
-  return updatePropertiesOnAgendaItemsBatched();
+  return updatePropertiesOnAgendaItemsBatched(agendaUri);
 };
 
 const parseSparqlResults = (data) => {
