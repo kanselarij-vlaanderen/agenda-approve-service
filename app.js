@@ -422,6 +422,7 @@ async function copyAgendaItems(oldUri, newUri) {
 const updatePropertiesOnAgendaItemsBatched = async function(agendaUri){
   const selectTargets = `  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+  PREFIX dct: <http://purl.org/dc/terms/>
   SELECT ?target WHERE {
     <${agendaUri}> dct:hasPart ?target .
     ?target ext:replacesPrevious ?previousURI.
