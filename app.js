@@ -11,10 +11,14 @@ const bodyParser = require('body-parser');
 const originalQuery = mu.query;
 const batchSize = process.env.BATCH_SIZE || 100;
 
-mu.query = function(query) {
+mu.query = function(query, retryCount = 0) {
   let start = moment();
   return originalQuery(query).catch((error) => {
-    console.log(`error during query ${query}: ${error}`);
+    if(retryCount < 3){
+      console.log(`error during query ${query}: ${error}`);
+      return mu.query(query, retryCount + 1);
+    }
+    console.log(`final error during query ${query}: ${error}`);
     throw error;
   }).then((result) => {
     console.log(`query took: ${moment().diff(start, 'seconds', true).toFixed(3)}s`);
