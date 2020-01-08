@@ -1,5 +1,4 @@
 import mu from 'mu';
-const util = require('./../util');
 
 const uuidv4 = require('uuid/v4');
 const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
@@ -34,7 +33,7 @@ INSERT DATA {
     });
 };
 
-async function getSubcasePhaseCode() {
+const getSubcasePhaseCode = async () => {
     const query = `
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -57,9 +56,9 @@ async function getSubcasePhaseCode() {
     });
     console.log(data);
     return data.results.bindings[0].code.value;
-}
+};
 
-async function getSubcasePhasesOfAgenda(newAgendaId, codeURI) {
+const getSubcasePhasesOfAgenda = async (newAgendaId, codeURI) => {
     const query = `
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -85,10 +84,9 @@ async function getSubcasePhasesOfAgenda(newAgendaId, codeURI) {
     return await mu.query(query).catch(err => {
         console.error(err)
     });
-}
+};
 
-
-async function markAgendaItemsPartOfAgendaA(agendaUri) {
+const markAgendaItemsPartOfAgendaA = async (agendaUri) => {
     const query = `
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -112,9 +110,9 @@ async function markAgendaItemsPartOfAgendaA(agendaUri) {
     return await mu.query(query).catch(err => {
         console.error(err)
     });
-}
+};
 
-async function storeAgendaItemNumbers(agendaUri) {
+const storeAgendaItemNumbers = async (agendaUri) => {
     const maxAgendaItemNumberSoFar = await getHighestAgendaItemNumber(agendaUri);
     let query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -162,9 +160,9 @@ async function storeAgendaItemNumbers(agendaUri) {
     await mu.query(query).catch(err => {
         console.log(err);
     })
-}
+};
 
-async function getHighestAgendaItemNumber(agendaUri) {
+const getHighestAgendaItemNumber = async (agendaUri) => {
     const query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
@@ -184,9 +182,9 @@ async function getHighestAgendaItemNumber(agendaUri) {
   }`;
     const response = await mu.query(query);
     return parseInt(((response.results.bindings[0] || {})['max'] || {}).value || 0);
-}
+};
 
-async function getUnnamedDocumentsOfAgenda(agendaUri) {
+const getUnnamedDocumentsOfAgenda = async (agendaUri) => {
     const query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
@@ -235,9 +233,8 @@ async function getUnnamedDocumentsOfAgenda(agendaUri) {
     return await mu.query(query).catch(err => {
         console.error(err)
     });
-}
-
-async function createNewSubcasesPhase(codeURI, subcaseListOfURIS) {
+};
+const createNewSubcasesPhase = async (codeURI, subcaseListOfURIS) => {
     if (subcaseListOfURIS.length < 1) {
         return;
     }
@@ -277,10 +274,9 @@ async function createNewSubcasesPhase(codeURI, subcaseListOfURIS) {
     return await mu.update(query).catch(err => {
         console.error(err)
     });
-}
+};
 
-
-async function getAgendaURI(newAgendaId) {
+const getAgendaURI = async (newAgendaId) => {
     const query = `
    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -296,37 +292,8 @@ async function getAgendaURI(newAgendaId) {
         console.error(err)
     });
     return data.results.bindings[0].agenda.value;
-}
+};
 
-
-async function copyAgendaItems(oldUri, newUri) {
-    // SUBQUERY: Is needed to make sure the uuid isn't generated for every variable.
-    const createNewUris = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-
-  INSERT { 
-    GRAPH <${targetGraph}> {
-      <${newUri}> dct:hasPart ?newURI .
-      ?newURI ext:replacesPrevious ?agendaitem .
-      <${newUri}> besluitvorming:heeftVorigeVersie <${oldUri}> .
-      ?newURI mu:uuid ?newUuid
-    }
-  } WHERE { { SELECT * WHERE {
-    <${oldUri}> dct:hasPart ?agendaitem .
-
-    OPTIONAL { ?agendaitem mu:uuid ?olduuid } 
-    BIND(IF(BOUND(?olduuid), STRUUID(), STRUUID()) as ?uuid)
-    BIND(IRI(CONCAT("http://kanselarij.vo.data.gift/id/agendapunten/", ?uuid)) AS ?newURI)
-    } }
-    BIND(STRAFTER(STR(?newURI), "http://kanselarij.vo.data.gift/id/agendapunten/") AS ?newUuid) 
-  }`;
-
-    await mu.update(createNewUris);
-    return util.updatePropertiesOnAgendaItemsBatched(newUri);
-}
 
 module.exports = {
     createNewAgenda,
@@ -336,7 +303,6 @@ module.exports = {
     storeAgendaItemNumbers,
     getUnnamedDocumentsOfAgenda,
     createNewSubcasesPhase,
-    getAgendaURI,
-    copyAgendaItems
+    getAgendaURI
 };
 

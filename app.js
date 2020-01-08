@@ -36,7 +36,7 @@ app.post('/approveAgenda', async (req, res) => {
     const oldAgendaId = req.body.oldAgendaId;
     const newAgendaURI = await repository.getAgendaURI(newAgendaId);
     const oldAgendaURI = await repository.getAgendaURI(oldAgendaId);
-    const agendaData = await repository.copyAgendaItems(oldAgendaURI, newAgendaURI);
+    const agendaData = await util.copyAgendaItems(oldAgendaURI, newAgendaURI);
 
     await repository.markAgendaItemsPartOfAgendaA(oldAgendaURI);
     await repository.storeAgendaItemNumbers(oldAgendaURI);

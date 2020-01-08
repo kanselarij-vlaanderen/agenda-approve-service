@@ -1,4 +1,4 @@
-const repository = require('./../repository');
+const repository = require('./../repository/index.js');
 const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
 const batchSize = process.env.BATCH_SIZE || 100;
 import mu from 'mu';
@@ -90,8 +90,7 @@ const parseSparqlResults = (data) => {
     })
 };
 
-
-async function nameDocumentsBasedOnAgenda(agendaUri) {
+const nameDocumentsBasedOnAgenda = async (agendaUri) => {
     let response = await repository.getUnnamedDocumentsOfAgenda(agendaUri);
     const mededelingType = "5fdf65f3-0732-4a36-b11c-c69b938c6626";
 
@@ -147,7 +146,7 @@ async function nameDocumentsBasedOnAgenda(agendaUri) {
   };`).catch(err => {
         console.error(err);
     });
-}
+};
 
 function paddNumberWithZeros(number, length) {
     let string = "" + number;
@@ -157,10 +156,9 @@ function paddNumberWithZeros(number, length) {
     return string;
 }
 
-async function checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, codeURI) {
+const checkForPhasesAndAssignMissingPhases = async (subcasePhasesOfAgenda, codeURI) => {
     if (subcasePhasesOfAgenda) {
         const parsedObjects = parseSparqlResults(subcasePhasesOfAgenda);
-
         const uniqueSubcaseIds = [...new Set(parsedObjects.map((item) => item['subcase']))];
         let subcaseListOfURIS = [];
         if (uniqueSubcaseIds.length < 1) {
@@ -175,12 +173,39 @@ async function checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, codeU
         });
         return await repository.createNewSubcasesPhase(codeURI, subcaseListOfURIS)
     }
-}
+};
 
+const copyAgendaItems = async (oldUri, newUri) => {
+    // SUBQUERY: Is needed to make sure the uuid isn't generated for every variable.
+    const createNewUris = `
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX dct: <http://purl.org/dc/terms/>
 
+  INSERT { 
+    GRAPH <${targetGraph}> {
+      <${newUri}> dct:hasPart ?newURI .
+      ?newURI ext:replacesPrevious ?agendaitem .
+      <${newUri}> besluitvorming:heeftVorigeVersie <${oldUri}> .
+      ?newURI mu:uuid ?newUuid
+    }
+  } WHERE { { SELECT * WHERE {
+    <${oldUri}> dct:hasPart ?agendaitem .
 
+    OPTIONAL { ?agendaitem mu:uuid ?olduuid } 
+    BIND(IF(BOUND(?olduuid), STRUUID(), STRUUID()) as ?uuid)
+    BIND(IRI(CONCAT("http://kanselarij.vo.data.gift/id/agendapunten/", ?uuid)) AS ?newURI)
+    } }
+    BIND(STRAFTER(STR(?newURI), "http://kanselarij.vo.data.gift/id/agendapunten/") AS ?newUuid) 
+  }`;
+
+    await mu.update(createNewUris);
+    return updatePropertiesOnAgendaItemsBatched(newUri);
+};
 
 module.exports = {
     checkForPhasesAndAssignMissingPhases,
     updatePropertiesOnAgendaItemsBatched,
+    copyAgendaItems
 };
