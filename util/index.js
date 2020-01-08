@@ -1,6 +1,7 @@
 const repository = require('./../repository');
-
 const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
+const batchSize = process.env.BATCH_SIZE || 100;
+import mu from 'mu';
 
 function getBindingValue(binding, property, fallback) {
     binding = binding || {};
@@ -181,4 +182,5 @@ async function checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, codeU
 
 module.exports = {
     checkForPhasesAndAssignMissingPhases,
+    updatePropertiesOnAgendaItemsBatched,
 };

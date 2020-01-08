@@ -1,4 +1,5 @@
 import mu from 'mu';
+const util = require('./../util');
 
 const uuidv4 = require('uuid/v4');
 const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
@@ -324,7 +325,7 @@ async function copyAgendaItems(oldUri, newUri) {
   }`;
 
     await mu.update(createNewUris);
-    return updatePropertiesOnAgendaItemsBatched(newUri);
+    return util.updatePropertiesOnAgendaItemsBatched(newUri);
 }
 
 module.exports = {

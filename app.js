@@ -9,7 +9,7 @@ const bodyParser = require('body-parser');
 const repository = require('./repository');
 const util = require('./util');
 const originalQuery = mu.query;
-const batchSize = process.env.BATCH_SIZE || 100;
+
 
 mu.query = function (query, retryCount = 0) {
     let start = moment();
