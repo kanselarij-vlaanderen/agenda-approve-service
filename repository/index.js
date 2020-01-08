@@ -4,9 +4,9 @@ const uuidv4 = require('uuid/v4');
 const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
 
 const createNewAgenda = async (req) => {
+    const newUUID = uuidv4();
     const reqTime = moment();
     const reqTimeFormatted = reqTime.format('YYYY-MM-DD');
-    const uuid = req.body.uuid;
     const agendaName = req.body.agendaName;
     const session = req.body.agendaSession;
     const agendaType = req.body.agendaType;
@@ -22,7 +22,7 @@ INSERT DATA {
   GRAPH <${targetGraph}> { 
   agendaType:${agendaType} a besluitvorming:Agenda ;
   ext:aangemaaktOp "${reqTimeFormatted}" ;
-  mu:uuid "${uuid}" ;
+  mu:uuid "${newUUID}" ;
   besluit:isAangemaaktVoor <http://kanselarij.vo.data.gift/id/zittingen/${session}> ;
   ext:agendaNaam "${agendaName}" ;
   ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
