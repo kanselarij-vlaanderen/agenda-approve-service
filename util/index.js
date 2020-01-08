@@ -1,6 +1,7 @@
 const repository = require('./../repository/index.js');
 const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
 const batchSize = process.env.BATCH_SIZE || 100;
+const moment = require('moment');
 import mu from 'mu';
 
 function getBindingValue(binding, property, fallback) {

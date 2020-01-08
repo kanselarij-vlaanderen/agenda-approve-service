@@ -32,9 +32,11 @@ app.use(bodyParser.json({type: 'application/*+json'}));
 
 // Approve agenda
 app.post('/approveAgenda', async (req, res) => {
-    const newAgendaId = req.body.newAgendaId;
     const oldAgendaId = req.body.oldAgendaId;
-    const newAgendaURI = await repository.getAgendaURI(newAgendaId);
+    const [newAgendaId, newAgendaURI] = await repository.createNewAgenda(req, res);
+    console.log("------------------------------------------------------------------");
+    console.log(newAgendaId);
+    console.log(newAgendaURI);
     const oldAgendaURI = await repository.getAgendaURI(oldAgendaId);
     const agendaData = await util.copyAgendaItems(oldAgendaURI, newAgendaURI);
 
@@ -50,13 +52,7 @@ app.post('/approveAgenda', async (req, res) => {
         console.log("something went wrong while assigning the code 'Geagendeerd' to the agendaitems", e);
     }
 
-    res.send({status: ok, statusCode: 200, body: {agendaData: agendaData}}); // resultsOfSerialNumbers: resultsAfterUpdates
+    res.send({status: ok, statusCode: 200, body: {agendaData: agendaData, newAgenda:{id: newAgendaId, uri: newAgendaURI, data:  agendaData}}}); // resultsOfSerialNumbers: resultsAfterUpdates
 });
-
-// Create new agenda
-app.post('/createAgenda', async (req, res) => {
-        repository.createNewAgenda(req, res);
-    }
-);
 
 mu.app.use(mu.errorHandler);

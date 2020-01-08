@@ -1,15 +1,17 @@
 import mu from 'mu';
-
+const moment = require('moment');
 const uuidv4 = require('uuid/v4');
 const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
 
-const createNewAgenda = async (req) => {
+const createNewAgenda = async (req, res) => {
     const newUUID = uuidv4();
+    const typeUUID = uuidv4();
     const reqTime = moment();
     const reqTimeFormatted = reqTime.format('YYYY-MM-DD');
     const agendaName = req.body.agendaName;
-    const session = req.body.agendaSession;
-    const agendaType = req.body.agendaType;
+    const session = req.body.createdFor;
+    const agendaType = typeUUID;
+
     const query = `
 PREFIX adms: <http://www.w3.org/ns/adms#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
@@ -28,9 +30,10 @@ INSERT DATA {
   ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
 }
 }`;
-    return await mu.query(query).catch(err => {
+    await mu.query(query).catch(err => {
         console.error(err)
     });
+    return [newUUID, "http://kanselarij.vo.data.gift/id/agendas/" + newUUID];
 };
 
 const getSubcasePhaseCode = async () => {
