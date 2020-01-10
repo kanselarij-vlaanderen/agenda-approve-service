@@ -30,14 +30,13 @@ mu.update = mu.query;
 app.use(cors());
 app.use(bodyParser.json({type: 'application/*+json'}));
 
-// Approve agenda
+// Approve agenda route
 app.post('/approveAgenda', async (req, res) => {
     const oldAgendaId = req.body.oldAgendaId;
-    const [newAgendaId, newAgendaURI] = await repository.createNewAgenda(req, res);
-    console.log("------------------------------------------------------------------");
-    console.log(newAgendaId);
-    console.log(newAgendaURI);
     const oldAgendaURI = await repository.getAgendaURI(oldAgendaId);
+    // Create new agenda via query.
+    const [newAgendaId, newAgendaURI] = await repository.createNewAgenda(req, res, oldAgendaURI);
+    // Copy old agenda data to new agenda.
     const agendaData = await util.copyAgendaItems(oldAgendaURI, newAgendaURI);
 
     await repository.markAgendaItemsPartOfAgendaA(oldAgendaURI);

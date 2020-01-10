@@ -3,31 +3,29 @@ const moment = require('moment');
 const uuidv4 = require('uuid/v4');
 const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
 
-const createNewAgenda = async (req, res) => {
+const createNewAgenda = async (req, res, oldAgendaURI) => {
     const newUUID = uuidv4();
-    const typeUUID = uuidv4();
     const reqTime = moment();
     const reqTimeFormatted = reqTime.format('YYYY-MM-DD');
     const agendaName = req.body.agendaName;
     const session = req.body.createdFor;
-    const agendaType = typeUUID;
-
     const query = `
 PREFIX adms: <http://www.w3.org/ns/adms#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX agendaType: <http://kanselarij.vo.data.gift/id/agendas/>
+PREFIX agenda: <http://kanselarij.vo.data.gift/id/agendas/>
 PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
 INSERT DATA {
   GRAPH <${targetGraph}> { 
-  agendaType:${agendaType} a besluitvorming:Agenda ;
+  agenda:${newUUID} a besluitvorming:Agenda ;
   ext:aangemaaktOp "${reqTimeFormatted}" ;
   mu:uuid "${newUUID}" ;
   besluit:isAangemaaktVoor <http://kanselarij.vo.data.gift/id/zittingen/${session}> ;
   ext:agendaNaam "${agendaName}" ;
   ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
+  <${oldAgendaURI}> besluitvorming:heeftVorigeVersie agendaType:${agendaTypeUuid};
 }
 }`;
     await mu.query(query).catch(err => {
