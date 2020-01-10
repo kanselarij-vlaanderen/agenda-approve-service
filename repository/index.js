@@ -25,7 +25,7 @@ INSERT DATA {
   besluit:isAangemaaktVoor <http://kanselarij.vo.data.gift/id/zittingen/${session}> ;
   ext:agendaNaam "${agendaName}" ;
   ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
-  <${oldAgendaURI}> besluitvorming:heeftVorigeVersie agendaType:${agendaTypeUuid};
+  <${oldAgendaURI}> besluitvorming:heeftVorigeVersie agenda:${newUUID};
 }
 }`;
     await mu.query(query).catch(err => {
