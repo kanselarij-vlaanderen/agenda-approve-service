@@ -295,6 +295,90 @@ const getAgendaURI = async (newAgendaId) => {
     return data.results.bindings[0].agenda.value;
 };
 
+const deleteAgendaitems = async (deleteAgendaURI) => {
+  const query = `
+  PREFIX dct: <http://purl.org/dc/terms/>
+
+  DELETE {
+    GRAPH <${targetGraph}>  {
+    ?agendaitem ?p ?o .
+    ?s ?pp ?agendaitem .
+  }
+  } WHERE {
+    GRAPH <${targetGraph}> { 
+    <${deleteAgendaURI}> dct:hasPart ?agendaitem .
+      ?agendaitem ?p ?o .
+      ?s ?pp ?agendaitem .
+    }
+  }`;
+    await mu.query(query);
+};
+
+const deleteSubcasePhases = async (deleteAgendaURI) => {
+  const query = `
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX dct: <http://purl.org/dc/terms/>
+  PREFIX dbpedia: <http://dbpedia.org/ontology/>
+
+  DELETE {
+    GRAPH <${targetGraph}> {
+
+    ?subcase besluitvorming:isAangevraagdVoor ?session .
+    ?subcase ext:subcaseProcedurestapFase ?phase .
+    ?phase ?p ?o .
+    ?subcase besluitvorming:isGeagendeerdVia ?agendapunt .
+    }
+  }
+  
+ WHERE {
+    GRAPH <${targetGraph}> {
+
+    ?subcase a dbpedia:UnitOfWork .
+    OPTIONAL { ?subcase besluitvorming:isAangevraagdVoor ?session .}
+    OPTIONAL { ?subcase ext:subcaseProcedurestapFase ?phase .
+      OPTIONAL { ?phase ?p ?o . }
+      }
+    OPTIONAL { ?subcase besluitvorming:isGeagendeerdVia ?agendapunt . }
+    
+      FILTER (?totalitems = 1)  {
+
+        SELECT (count(*) AS ?totalitems) ?subcase WHERE {
+          GRAPH <${targetGraph}> {
+            <${deleteAgendaURI}> dct:hasPart ?agendaitems .
+
+            ?subcase a dbpedia:UnitOfWork . 
+            ?subcase besluitvorming:isGeagendeerdVia ?agendaitems .
+            ?subcase besluitvorming:isGeagendeerdVia ?totalitems .
+          }
+        }
+        GROUP BY ?subcase
+      }
+       
+    }
+  }
+  `;
+  await mu.query(query);
+}
+
+const deleteAgenda = async (deleteAgendaURI) => {
+  const query = `
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+
+  DELETE {
+    GRAPH <${targetGraph}>  {
+    <${deleteAgendaURI}> ?p ?o .
+    ?s ?pp <${deleteAgendaURI}> .
+  }
+  } WHERE {
+    GRAPH <${targetGraph}> { 
+    <${deleteAgendaURI}> a besluitvorming:Agenda ;
+      ?p ?o .
+      ?s ?pp <${deleteAgendaURI}> .
+    }
+  }`;
+    await mu.query(query);
+};
 
 module.exports = {
     createNewAgenda,
@@ -304,6 +388,9 @@ module.exports = {
     storeAgendaItemNumbers,
     getUnnamedDocumentsOfAgenda,
     createNewSubcasesPhase,
-    getAgendaURI
+    getAgendaURI,
+    deleteSubcasePhases,
+    deleteAgendaitems,
+    deleteAgenda
 };
 
