@@ -359,7 +359,7 @@ const deleteSubcasePhases = async (deleteAgendaURI) => {
   }
   `;
   await mu.query(query);
-}
+};
 
 const deleteAgenda = async (deleteAgendaURI) => {
   const query = `
@@ -374,7 +374,9 @@ const deleteAgenda = async (deleteAgendaURI) => {
     GRAPH <${targetGraph}> { 
     <${deleteAgendaURI}> a besluitvorming:Agenda ;
       ?p ?o .
-      ?s ?pp <${deleteAgendaURI}> .
+      OPTIONAL {
+        ?s ?pp <${deleteAgendaURI}> .
+      }
     }
   }`;
     await mu.query(query);
