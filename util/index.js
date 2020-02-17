@@ -13,26 +13,33 @@ function getBindingValue(binding, property, fallback) {
     return result;
 }
 
-const updatePropertiesOnAgendaItemsBatched = async function (agendaUri) {
-    const selectTargets = `  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+const updatePropertiesOnAgendaItems = async function (agendaUri) {
+  const selectTargets = `  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX dct: <http://purl.org/dc/terms/>
-  SELECT ?target WHERE {
+  SELECT DISTINCT ?target WHERE {
     <${agendaUri}> dct:hasPart ?target .
-    ?target ext:replacesPrevious ?previousURI.
-    FILTER NOT EXISTS {
-      ?target a besluit:Agendapunt .
-    }
-  } LIMIT ${batchSize}
+    ?target ext:replacesPrevious ?previousURI .
+  }  
   `;
-    const data = await mu.query(selectTargets);
-    const targets = data.results.bindings.map((binding) => {
-        return binding.target.value;
-    });
-    if (targets.length == 0) {
-        return "all done";
-    }
+  const data = await mu.query(selectTargets);
+  const targets = data.results.bindings.map((binding) => {
+      return binding.target.value;
+  });
+  return updatePropertiesOnAgendaItemsBatched(targets);
+}
 
+const updatePropertiesOnAgendaItemsBatched = async function (targets) {
+  if (!targets || targets.length == 0) {
+    console.log("all done updating properties of agendaitems");
+    return;
+  }
+
+  let targetsToDo = [];
+  if (targets.length > batchSize) {
+    console.log(`Agendaitems list exceeds the batchSize of ${batchSize}, splitting into batches`);
+    targetsToDo = targets.splice(0, batchSize);
+  }
     const movePropertiesLeft = `
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -48,7 +55,7 @@ const updatePropertiesOnAgendaItemsBatched = async function (agendaUri) {
     VALUES (?target) {
       (<${targets.join(">) (<")}>)
     }
-    ?target ext:replacesPrevious ?previousURI.
+    ?target ext:replacesPrevious ?previousURI .
     ?previousURI ?p ?o .
     FILTER(?p != mu:uuid)
   }`;
@@ -75,7 +82,7 @@ const updatePropertiesOnAgendaItemsBatched = async function (agendaUri) {
   }`;
     await mu.update(movePropertiesRight);
 
-    return updatePropertiesOnAgendaItemsBatched(agendaUri);
+    return updatePropertiesOnAgendaItemsBatched(targetsToDo);
 };
 
 const parseSparqlResults = (data) => {
@@ -176,37 +183,41 @@ const checkForPhasesAndAssignMissingPhases = async (subcasePhasesOfAgenda, codeU
     }
 };
 
-const copyAgendaItems = async (oldUri, newUri) => {
-    // SUBQUERY: Is needed to make sure the uuid isn't generated for every variable.
+const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
+    // The bind of ?uuid is a workaround to get a unique id for each STRUUID call.
+    // SUBQUERY: Is needed to make sure we have the same UUID for the URI, since using ?uuid generated a new one
     const createNewUris = `
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX dct: <http://purl.org/dc/terms/>
 
   INSERT { 
     GRAPH <${targetGraph}> {
-      <${newUri}> dct:hasPart ?newURI .
-      ?newURI ext:replacesPrevious ?agendaitem .
-      <${newUri}> besluitvorming:heeftVorigeVersie <${oldUri}> .
-      ?newURI mu:uuid ?newUuid
+      ?newAgendaitemURI a besluit:Agendapunt ;
+        mu:uuid ?newAgendaitemUuid ;
+        ext:replacesPrevious ?agendaitem .
+      <${newAgendaUri}> dct:hasPart ?newAgendaitemURI ;
+        besluitvorming:heeftVorigeVersie <${oldAgendaUri}> .
+
     }
   } WHERE { { SELECT * WHERE {
-    <${oldUri}> dct:hasPart ?agendaitem .
+    <${oldAgendaUri}> dct:hasPart ?agendaitem .
 
-    OPTIONAL { ?agendaitem mu:uuid ?olduuid } 
+    OPTIONAL { ?agendaitem mu:uuid ?olduuid . } 
     BIND(IF(BOUND(?olduuid), STRUUID(), STRUUID()) as ?uuid)
-    BIND(IRI(CONCAT("http://kanselarij.vo.data.gift/id/agendapunten/", ?uuid)) AS ?newURI)
+    BIND(IRI(CONCAT("http://kanselarij.vo.data.gift/id/agendapunten/", ?uuid)) AS ?newAgendaitemURI)
     } }
-    BIND(STRAFTER(STR(?newURI), "http://kanselarij.vo.data.gift/id/agendapunten/") AS ?newUuid) 
+    BIND(STRAFTER(STR(?newAgendaitemURI), "http://kanselarij.vo.data.gift/id/agendapunten/") AS ?newAgendaitemUuid) 
   }`;
 
-    await mu.update(createNewUris);
-    return updatePropertiesOnAgendaItemsBatched(newUri);
+    const result = await mu.update(createNewUris);
+    return updatePropertiesOnAgendaItems(newAgendaUri);
 };
 
 module.exports = {
     checkForPhasesAndAssignMissingPhases,
-    updatePropertiesOnAgendaItemsBatched,
+    updatePropertiesOnAgendaItems,
     copyAgendaItems
 };
