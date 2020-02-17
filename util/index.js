@@ -198,9 +198,7 @@ const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
       ?newAgendaitemURI a besluit:Agendapunt ;
         mu:uuid ?newAgendaitemUuid ;
         ext:replacesPrevious ?agendaitem .
-      <${newAgendaUri}> dct:hasPart ?newAgendaitemURI ;
-        besluitvorming:heeftVorigeVersie <${oldAgendaUri}> .
-
+      <${newAgendaUri}> dct:hasPart ?newAgendaitemURI .
     }
   } WHERE { { SELECT * WHERE {
     <${oldAgendaUri}> dct:hasPart ?agendaitem .
