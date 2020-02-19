@@ -1,5 +1,5 @@
 const repository = require('./../repository/index.js');
-const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
+const targetGraph = "http://mu.semte.ch/application";
 const batchSize = process.env.BATCH_SIZE || 100;
 const moment = require('moment');
 import mu from 'mu';
@@ -98,6 +98,7 @@ const parseSparqlResults = (data) => {
     })
 };
 
+//This method is for assigning VR numbers to documents automatically but is currently not being used and will need updating
 const nameDocumentsBasedOnAgenda = async (agendaUri) => {
     let response = await repository.getUnnamedDocumentsOfAgenda(agendaUri);
     const mededelingType = "5fdf65f3-0732-4a36-b11c-c69b938c6626";
@@ -195,7 +196,7 @@ const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
 
   INSERT { 
     GRAPH <${targetGraph}> {
-      ?newAgendaitemURI a besluit:Agendapunt ;
+        ?newAgendaitemURI a besluit:Agendapunt ;
         mu:uuid ?newAgendaitemUuid ;
         ext:replacesPrevious ?agendaitem .
       <${newAgendaUri}> dct:hasPart ?newAgendaitemURI .

@@ -1,7 +1,7 @@
 import mu from 'mu';
 const moment = require('moment');
 const uuidv4 = require('uuid/v4');
-const targetGraph = "http://mu.semte.ch/graphs/organizations/kanselarij";
+const targetGraph = "http://mu.semte.ch/application";
 
 const createNewAgenda = async (req, res, oldAgendaURI) => {
     const newUUID = uuidv4();
@@ -89,32 +89,6 @@ const getSubcasePhasesOfAgenda = async (newAgendaId, codeURI) => {
     });
 };
 
-const markAgendaItemsPartOfAgendaA = async (agendaUri) => {
-    const query = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  
-  INSERT {
-    GRAPH <${targetGraph}> {
-      ?agendaItem ext:partOfFirstAgenda """true"""^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
-    }
-  } WHERE {
-    <${agendaUri}> dct:hasPart ?agendaItem .
-    
-    FILTER NOT EXISTS {
-      <${agendaUri}> besluitvorming:heeftVorigeVersie ?o.
-    }      
-  }`;
-    return await mu.query(query).catch(err => {
-        console.error(err)
-    });
-};
-
 const storeAgendaItemNumbers = async (agendaUri) => {
     const maxAgendaItemNumberSoFar = await getHighestAgendaItemNumber(agendaUri);
     let query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -187,6 +161,7 @@ const getHighestAgendaItemNumber = async (agendaUri) => {
     return parseInt(((response.results.bindings[0] || {})['max'] || {}).value || 0);
 };
 
+//This method is for assigning VR numbers to documents automatically but is currently not being used and will need updating
 const getUnnamedDocumentsOfAgenda = async (agendaUri) => {
     const query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -388,7 +363,6 @@ module.exports = {
     createNewAgenda,
     getSubcasePhaseCode,
     getSubcasePhasesOfAgenda,
-    markAgendaItemsPartOfAgendaA,
     storeAgendaItemNumbers,
     getUnnamedDocumentsOfAgenda,
     createNewSubcasesPhase,
