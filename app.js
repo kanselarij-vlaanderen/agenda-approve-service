@@ -1,6 +1,6 @@
 // VIRTUOSO bug: https://github.com/openlink/virtuoso-opensource/issues/515
 import mu from 'mu';
-import {ok} from 'assert';
+import { ok } from 'assert';
 import cors from 'cors';
 
 const app = mu.app;
@@ -12,46 +12,45 @@ const originalQuery = mu.query;
 
 
 mu.query = function (query, retryCount = 0) {
-    let start = moment();
-    return originalQuery(query).catch((error) => {
-        if (retryCount < 3) {
-            console.log(`error during query ${query}: ${error}`);
-            return mu.query(query, retryCount + 1);
-        }
-        console.log(`final error during query ${query}: ${error}`);
-        throw error;
-    }).then((result) => {
-        console.log(`query took: ${moment().diff(start, 'seconds', true).toFixed(3)}s`);
-        return result;
-    });
+  let start = moment();
+  return originalQuery(query).catch((error) => {
+    if (retryCount < 3) {
+      console.log(`error during query ${query}: ${error}`);
+      return mu.query(query, retryCount + 1);
+    }
+    console.log(`final error during query ${query}: ${error}`);
+    throw error;
+  }).then((result) => {
+    console.log(`query took: ${moment().diff(start, 'seconds', true).toFixed(3)}s`);
+    return result;
+  });
 };
 mu.update = mu.query;
 
 app.use(cors());
-app.use(bodyParser.json({type: 'application/*+json'}));
+app.use(bodyParser.json({ type: 'application/*+json' }));
 
 // Approve agenda route
 app.post('/approveAgenda', async (req, res) => {
-    const oldAgendaId = req.body.oldAgendaId;
-    const oldAgendaURI = await repository.getAgendaURI(oldAgendaId);
-    // Create new agenda via query.
-    const [newAgendaId, newAgendaURI] = await repository.createNewAgenda(req, res, oldAgendaURI);
-    // Copy old agenda data to new agenda.
-    const agendaData = await util.copyAgendaItems(oldAgendaURI, newAgendaURI);
+  const oldAgendaId = req.body.oldAgendaId;
+  const oldAgendaURI = await repository.getAgendaURI(oldAgendaId);
+  // Create new agenda via query.
+  const [newAgendaId, newAgendaURI] = await repository.createNewAgenda(req, res, oldAgendaURI);
+  // Copy old agenda data to new agenda.
+  const agendaData = await util.copyAgendaItems(oldAgendaURI, newAgendaURI);
 
-    await repository.markAgendaItemsPartOfAgendaA(oldAgendaURI);
-    await repository.storeAgendaItemNumbers(oldAgendaURI);
+  await repository.storeAgendaItemNumbers(oldAgendaURI);
 
-    try {
-        const codeURI = await repository.getSubcasePhaseCode();
-        const subcasePhasesOfAgenda = await repository.getSubcasePhasesOfAgenda(newAgendaId, codeURI);
+  try {
+    const codeURI = await repository.getSubcasePhaseCode();
+    const subcasePhasesOfAgenda = await repository.getSubcasePhasesOfAgenda(newAgendaId, codeURI);
 
-        await util.checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, codeURI);
-    } catch (e) {
-        console.log("something went wrong while assigning the code 'Geagendeerd' to the agendaitems", e);
-    }
+    await util.checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, codeURI);
+  } catch (e) {
+    console.log("something went wrong while assigning the code 'Geagendeerd' to the agendaitems", e);
+  }
 
-    res.send({status: ok, statusCode: 200, body: {agendaData: agendaData, newAgenda:{id: newAgendaId, uri: newAgendaURI, data:  agendaData}}}); // resultsOfSerialNumbers: resultsAfterUpdates
+  res.send({ status: ok, statusCode: 200, body: { agendaData: agendaData, newAgenda: { id: newAgendaId, uri: newAgendaURI, data: agendaData } } }); // resultsOfSerialNumbers: resultsAfterUpdates
 });
 
 mu.app.use(mu.errorHandler);
@@ -59,18 +58,18 @@ mu.app.use(mu.errorHandler);
 // Approve agenda route
 app.post('/deleteAgenda', async (req, res) => {
   const agendaToDeleteId = req.body.agendaToDeleteId;
-  if(!agendaToDeleteId){
-    res.send({statusCode: 400, body: "agendaToDeleteId missing, deletion of agenda failed"});
+  if (!agendaToDeleteId) {
+    res.send({ statusCode: 400, body: "agendaToDeleteId missing, deletion of agenda failed" });
     return;
   }
-  try{
+  try {
     const agendaToDeleteURI = await repository.getAgendaURI(agendaToDeleteId);
     await repository.deleteSubcasePhases(agendaToDeleteURI);
     await repository.deleteAgendaitems(agendaToDeleteURI);
     await repository.deleteAgenda(agendaToDeleteURI);
-    res.send({status: ok, statusCode: 200});
+    res.send({ status: ok, statusCode: 200 });
   } catch (e) {
-      console.log(e);
-    res.send({statusCode: 500, body: "something went wrong while deleting the agenda", e});
+    console.log(e);
+    res.send({ statusCode: 500, body: "something went wrong while deleting the agenda", e });
   }
 });
