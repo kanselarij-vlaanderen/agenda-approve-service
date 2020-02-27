@@ -55,13 +55,16 @@ app.post('/approveAgenda', async (req, res) => {
         const subcasePhasesOfAgenda = await repository.getSubcasePhasesOfAgenda(newAgendaId, codeURI);
 
         await util.checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, codeURI);
+      await originalQuery(logger.createLogEntry({
+        type:'INFO',
+        state: 'UP'
+      }));
     } catch (e) {
+        console.log(`error on ${newAgendaURI}`);
         console.log("something went wrong while assigning the code 'Geagendeerd' to the agendaitems", e);
     }
-    originalQuery(logger.logSuccess({
-      type:'INFO',
-      state: 'UP'
-    }));
+
+
     res.send({status: ok, statusCode: 200, body: {agendaData: agendaData, newAgenda:{id: newAgendaId, uri: newAgendaURI, data:  agendaData}}}); // resultsOfSerialNumbers: resultsAfterUpdates
 });
 
