@@ -10,6 +10,14 @@ const repository = require('./repository');
 const util = require('./util');
 const originalQuery = mu.query;
 
+const SERVICENAME = 'agenda-approve-service';
+const GRAPH = 'http://mu.semte.ch/graphs/public';
+
+const errorLoggingModule = require('error-logging-module');
+
+const logger = new errorLoggingModule();
+logger.setGraph(GRAPH);
+logger.setServiceName(SERVICENAME);
 
 mu.query = function (query, retryCount = 0) {
     let start = moment();
@@ -50,7 +58,10 @@ app.post('/approveAgenda', async (req, res) => {
     } catch (e) {
         console.log("something went wrong while assigning the code 'Geagendeerd' to the agendaitems", e);
     }
-
+    originalQuery(logger.logSuccess({
+      type:'INFO',
+      state: 'UP'
+    }));
     res.send({status: ok, statusCode: 200, body: {agendaData: agendaData, newAgenda:{id: newAgendaId, uri: newAgendaURI, data:  agendaData}}}); // resultsOfSerialNumbers: resultsAfterUpdates
 });
 
