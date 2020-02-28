@@ -88,3 +88,11 @@ app.post('/deleteAgenda', async (req, res) => {
     res.send({statusCode: 500, body: "something went wrong while deleting the agenda", e});
   }
 });
+
+app.get('/health', async (req,res) => {
+  await originalQuery(logger.createLogEntry({
+    type:'INFO',
+    state: 'UP'
+  }));
+  res.send({status: ok, statusCode: 200});
+});
