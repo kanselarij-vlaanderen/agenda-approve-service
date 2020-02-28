@@ -60,10 +60,15 @@ app.post('/approveAgenda', async (req, res) => {
         state: 'UP'
       }));
     } catch (e) {
+      await originalQuery(logger.createErrorEntry({
+        type:'ERROR',
+        state: 'UP',
+        message: 'something went wrong while assigning the code \'Geagendeerd\' to the agendaitems',
+        error: JSON.stringify(e)
+      }));
         console.log(`error on ${newAgendaURI}`);
         console.log("something went wrong while assigning the code 'Geagendeerd' to the agendaitems", e);
     }
-
 
     res.send({status: ok, statusCode: 200, body: {agendaData: agendaData, newAgenda:{id: newAgendaId, uri: newAgendaURI, data:  agendaData}}}); // resultsOfSerialNumbers: resultsAfterUpdates
 });
@@ -74,6 +79,12 @@ mu.app.use(mu.errorHandler);
 app.post('/deleteAgenda', async (req, res) => {
   const agendaToDeleteId = req.body.agendaToDeleteId;
   if(!agendaToDeleteId){
+    await originalQuery(logger.createErrorEntry({
+      type:'ERROR',
+      state: 'UP',
+      message: 'agendaToDeleteId missing, deletion of agenda failed',
+      error: JSON.stringify(agendaToDeleteId)
+    }));
     res.send({statusCode: 400, body: "agendaToDeleteId missing, deletion of agenda failed"});
     return;
   }
@@ -84,7 +95,13 @@ app.post('/deleteAgenda', async (req, res) => {
     await repository.deleteAgenda(agendaToDeleteURI);
     res.send({status: ok, statusCode: 200});
   } catch (e) {
-      console.log(e);
+    await originalQuery(logger.createErrorEntry({
+      type:'ERROR',
+      state: 'UP',
+      message: 'something went wrong while deleting the agenda',
+      error: JSON.stringify(e)
+    }));
+    console.log(e);
     res.send({statusCode: 500, body: "something went wrong while deleting the agenda", e});
   }
 });
