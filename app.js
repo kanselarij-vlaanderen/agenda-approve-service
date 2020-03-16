@@ -55,10 +55,6 @@ app.post('/approveAgenda', async (req, res) => {
         const subcasePhasesOfAgenda = await repository.getSubcasePhasesOfAgenda(newAgendaId, codeURI);
 
         await util.checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, codeURI);
-      await originalQuery(logger.createLogEntry({
-        type:'INFO',
-        state: 'UP'
-      }));
     } catch (e) {
       await originalQuery(logger.createErrorEntry({
         type:'ERROR',
@@ -107,9 +103,5 @@ app.post('/deleteAgenda', async (req, res) => {
 });
 
 app.get('/health', async (req,res) => {
-  await originalQuery(logger.createLogEntry({
-    type:'INFO',
-    state: 'UP'
-  }));
   res.send({status: ok, statusCode: 200});
 });
