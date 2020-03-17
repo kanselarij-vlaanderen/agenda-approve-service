@@ -11,12 +11,12 @@ const util = require('./util');
 const originalQuery = mu.query;
 
 const SERVICENAME = 'agenda-approve-service';
-const GRAPH = 'http://mu.semte.ch/graphs/public';
+const PUBLIC_GRAPH = 'http://mu.semte.ch/graphs/public';
 
 const errorLoggingModule = require('error-logging-module');
 
 const logger = new errorLoggingModule();
-logger.setGraph(GRAPH);
+logger.setGraph(PUBLIC_GRAPH);
 logger.setServiceName(SERVICENAME);
 
 mu.query = function (query, retryCount = 0) {
