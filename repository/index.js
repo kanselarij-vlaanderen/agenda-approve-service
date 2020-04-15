@@ -8,8 +8,10 @@ const createNewAgenda = async (req, res, oldAgendaURI) => {
   const reqDate = moment();
   const reqDateFormatted = reqDate.format('YYYY-MM-DD');
   const reqDateTimeFormatted = reqDate.utc().format();
-  const agendaName = req.body.agendaName;
   const session = req.body.createdFor;
+  const serialNumbers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const {sessionUri, agendaCount} = await zittingInfo(session);
+  const serialNumber = serialNumbers[agendaCount] || agendaCount;
   const query = `
 PREFIX adms: <http://www.w3.org/ns/adms#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
@@ -17,23 +19,70 @@ PREFIX agenda: <http://kanselarij.vo.data.gift/id/agendas/>
 PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX statusid: <http://kanselarij.vo.data.gift/id/agendastatus/>
 
 INSERT DATA {
   GRAPH <${targetGraph}> { 
   agenda:${newUUID} a besluitvorming:Agenda ;
-  ext:aangemaaktOp "${reqDateFormatted}" ;
-  ext:aangepastOp "${reqDateTimeFormatted}" ;
+  dct:created "${reqDateFormatted}" ;
+  dct:modified "${reqDateTimeFormatted}" ;
+  dct:type besluitvorming:Agenda ;
+  besluitvorming:agendaStatus statusid:2735d084-63d1-499f-86f4-9b69eb33727f ;
   mu:uuid "${newUUID}" ;
-  besluit:isAangemaaktVoor <http://kanselarij.vo.data.gift/id/zittingen/${session}> ;
-  ext:agendaNaam "${agendaName}" ;
+  besluitvorming:isAgendaVoor <${sessionUri}> ;
+  dct:title "Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}" ;
+  besluitvorming:volgnummer "${serialNumber} .
   ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
-  agenda:${newUUID} besluitvorming:heeftVorigeVersie <${oldAgendaURI}>  .
+  agenda:${newUUID} prov:wasRevisionOf <${oldAgendaURI}>  .
 }
 }`;
   await mu.query(query).catch(err => {
     console.error(err)
   });
   return [newUUID, "http://kanselarij.vo.data.gift/id/agendas/" + newUUID];
+};
+
+const approveAgenda = async (agendaURI) => {
+  const query = `DELETE DATA {
+    GRAPH <$targetGraph}> {
+      <${agendaURI}> <http://data.vlaanderen.be/ns/besluitvorming#agendaStatus> <http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f> .
+    }
+  };
+  INSERT DATA {
+    GRAPH <$targetGraph}> {
+      <${agendaURI}> <http://data.vlaanderen.be/ns/besluitvorming#agendaStatus> <http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1> .
+    }
+  }`;
+  await mu.query(query);
+};
+
+const zittingInfo = async (zittingUuid) => {
+  const query = `
+PREFIX adms: <http://www.w3.org/ns/adms#>
+PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+PREFIX agenda: <http://kanselarij.vo.data.gift/id/agendas/>
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX statusid: <http://kanselarij.vo.data.gift/id/agendastatus/>
+
+SELECT ?zitting COUNT(DISTINCT(?agenda)) AS ?agendacount WHERE {
+  ?zitting a besluit:Vergaderactiviteit ;
+           mu:uuid "${zittingUuid}" .
+  ?agenda besluitvorming:isAgendaVoor ?zitting .
+} GROUP BY ?zitting`;
+  const data = await mu.query(query).catch(err => {
+    console.error(err)
+  });
+  const firstResult = data.results.bindings[0] || {};
+  return {
+    sessionUri: firstResult.zitting.value,
+    agendaCount: parseInt(firstResult.agendacount.value)
+  };
 };
 
 const getSubcasePhaseCode = async () => {
@@ -57,7 +106,6 @@ const getSubcasePhaseCode = async () => {
   const data = await mu.query(query).catch(err => {
     console.error(err)
   });
-  console.log(data);
   return data.results.bindings[0].code.value;
 };
 
@@ -149,11 +197,11 @@ const getHighestAgendaItemNumber = async (agendaUri) => {
   PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
   
   SELECT (MAX(?number) as ?max) WHERE {
-      <${agendaUri}> besluit:isAangemaaktVoor ?zitting .
+      <${agendaUri}> besluitvorming:isAgendaVoor ?zitting .
       ?zitting besluit:geplandeStart ?zittingDate .
       ?otherZitting besluit:geplandeStart ?otherZittingDate .
       FILTER(YEAR(?zittingDate) = YEAR(?otherZittingDate))
-      ?otherAgenda besluit:isAangemaaktVoor ?otherZitting .
+      ?otherAgenda besluitvorming:isAgendaVoor ?otherZitting .
       ?otherAgenda dct:hasPart ?agendaItem .
       ?agendaItem ext:agendaItemNumber ?number .
   }`;
@@ -172,7 +220,7 @@ const getUnnamedDocumentsOfAgenda = async (agendaUri) => {
   PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
   
   SELECT ?agendaItem ?existingNumbers ?document ?number ?zittingDate ?dossierType ?announcement WHERE {
-    <${agendaUri}> besluit:isAangemaaktVoor ?zitting .
+    <${agendaUri}> besluitvorming:isAgendaVoor ?zitting .
     ?zitting besluit:geplandeStart ?zittingDate .
     <${agendaUri}> dct:hasPart ?agendaItem .
     ?agendaItem ext:bevatAgendapuntDocumentversie ?documentVersion .
@@ -220,7 +268,7 @@ const createNewSubcasesPhase = async (codeURI, subcaseListOfURIS) => {
     const newUUID = uuidv4();
     const newURI = `http://data.vlaanderen.be/id/ProcedurestapFase/${newUUID}`;
     return `
-    <${newURI}> a   ext:ProcedurestapFase ;
+    <${newURI}> a ext:ProcedurestapFase ;
     mu:uuid "${newUUID}" ;
     besluitvorming:statusdatum """${new Date().toISOString()}"""^^xsd:dateTime ;
     ext:procedurestapFaseCode <${codeURI}> .
@@ -369,6 +417,7 @@ module.exports = {
   getAgendaURI,
   deleteSubcasePhases,
   deleteAgendaitems,
-  deleteAgenda
+  deleteAgenda,
+  approveAgenda
 };
 
