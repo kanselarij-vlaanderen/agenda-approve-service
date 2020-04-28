@@ -10,7 +10,7 @@ const createNewAgenda = async (req, res, oldAgendaURI) => {
   const reqDateTimeFormatted = reqDate.utc().format();
   const session = req.body.createdFor;
   const serialNumbers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const {sessionUri, agendaCount} = await zittingInfo(session);
+  const {sessionUri, agendaCount, zittingDate} = await zittingInfo(session);
   const serialNumber = serialNumbers[agendaCount] || agendaCount;
   const query = `
 PREFIX adms: <http://www.w3.org/ns/adms#>
@@ -33,7 +33,7 @@ INSERT DATA {
   mu:uuid "${newUUID}" ;
   besluitvorming:isAgendaVoor <${sessionUri}> ;
   dct:title "Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}" ;
-  besluitvorming:volgnummer "${serialNumber} .
+  besluitvorming:volgnummer "${serialNumber}" ;
   ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
   agenda:${newUUID} prov:wasRevisionOf <${oldAgendaURI}>  .
 }
@@ -46,12 +46,12 @@ INSERT DATA {
 
 const approveAgenda = async (agendaURI) => {
   const query = `DELETE DATA {
-    GRAPH <$targetGraph}> {
+    GRAPH <${targetGraph}> {
       <${agendaURI}> <http://data.vlaanderen.be/ns/besluitvorming#agendaStatus> <http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f> .
     }
   };
   INSERT DATA {
-    GRAPH <$targetGraph}> {
+    GRAPH <${targetGraph}> {
       <${agendaURI}> <http://data.vlaanderen.be/ns/besluitvorming#agendaStatus> <http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1> .
     }
   }`;
@@ -70,17 +70,19 @@ PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX dct: <http://purl.org/dc/terms/>
 PREFIX statusid: <http://kanselarij.vo.data.gift/id/agendastatus/>
 
-SELECT ?zitting COUNT(DISTINCT(?agenda)) AS ?agendacount WHERE {
+SELECT ?zitting ?zittingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
   ?zitting a besluit:Vergaderactiviteit ;
+           besluit:geplandeStart ?zittingDate ;
            mu:uuid "${zittingUuid}" .
   ?agenda besluitvorming:isAgendaVoor ?zitting .
-} GROUP BY ?zitting`;
+} GROUP BY ?zitting ?zittingDate`;
   const data = await mu.query(query).catch(err => {
     console.error(err)
   });
   const firstResult = data.results.bindings[0] || {};
   return {
     sessionUri: firstResult.zitting.value,
+    zittingDate: firstResult.zittingDate.value,
     agendaCount: parseInt(firstResult.agendacount.value)
   };
 };
