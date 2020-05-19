@@ -161,57 +161,6 @@ const getHighestAgendaItemNumber = async (agendaUri) => {
   return parseInt(((response.results.bindings[0] || {})['max'] || {}).value || 0);
 };
 
-//This method is for assigning VR numbers to documents automatically but is currently not being used and will need updating
-const getUnnamedDocumentsOfAgenda = async (agendaUri) => {
-  const query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  
-  SELECT ?agendaItem ?existingNumbers ?document ?number ?zittingDate ?dossierType ?announcement WHERE {
-    <${agendaUri}> besluit:isAangemaaktVoor ?zitting .
-    ?zitting besluit:geplandeStart ?zittingDate .
-    <${agendaUri}> dct:hasPart ?agendaItem .
-    ?agendaItem ext:bevatAgendapuntDocumentversie ?documentVersion .
-    ?document besluitvorming:heeftVersie ?documentVersion .
-    ?agendaItem ext:agendaItemNumber ?number .
-
-    FILTER NOT EXISTS {
-      ?document besluitvorming:stuknummerVR ?vrnumber .
-    }
-
-    OPTIONAL {
-      ?agendaItem ext:wordtGetoondAlsMededeling ?announcement .
-    }
-    OPTIONAL { 
-      ?subcase besluitvorming:isGeagendeerdVia ?agendaItem .
-      OPTIONAL {
-        ?case dct:hasPart ?subcase .
-        ?case dct:type ?dossierType .
-      }
-    }
-    OPTIONAL {
-      ?document ext:documentType ?docType .
-      ?docType ext:prioriteit ?prio .
-    }
-    BIND(IF(BOUND(?prio), ?prio, 1000000) AS ?documentPriority)
-
-    { SELECT ?agendaItem (COUNT(DISTINCT(?othervrnumber)) AS ?existingNumbers) WHERE {
-        ?agendaItem ext:bevatAgendapuntDocumentversie ?otherVersion .
-        ?otherDocument besluitvorming:heeftVersie ?otherVersion .
-        OPTIONAL { ?otherDocument besluitvorming:stuknummerVR ?othervrnumber . }
-    } GROUP BY ?agendaItem }
-    
-  } ORDER BY ?agendaItem ?documentPriority
-  `;
-
-  return await mu.query(query).catch(err => {
-    console.error(err)
-  });
-};
 const createNewSubcasesPhase = async (codeURI, subcaseListOfURIS) => {
   if (subcaseListOfURIS.length < 1) {
     return;
@@ -364,7 +313,6 @@ module.exports = {
   getSubcasePhaseCode,
   getSubcasePhasesOfAgenda,
   storeAgendaItemNumbers,
-  getUnnamedDocumentsOfAgenda,
   createNewSubcasesPhase,
   getAgendaURI,
   deleteSubcasePhases,
