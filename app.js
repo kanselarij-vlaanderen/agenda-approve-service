@@ -10,7 +10,6 @@ const repository = require('./repository');
 const util = require('./util');
 const originalQuery = mu.query;
 
-
 mu.query = function (query, retryCount = 0) {
   let start = moment();
   return originalQuery(query).catch((error) => {
@@ -38,6 +37,7 @@ app.post('/approveAgenda', async (req, res) => {
   const [newAgendaId, newAgendaURI] = await repository.createNewAgenda(req, res, oldAgendaURI);
   // Copy old agenda data to new agenda.
   const agendaData = await util.copyAgendaItems(oldAgendaURI, newAgendaURI);
+  await repository.approveAgenda(oldAgendaURI);
 
   await repository.storeAgendaItemNumbers(oldAgendaURI);
 
@@ -46,11 +46,11 @@ app.post('/approveAgenda', async (req, res) => {
     const subcasePhasesOfAgenda = await repository.getSubcasePhasesOfAgenda(newAgendaId, codeURI);
 
     await util.checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, codeURI);
-  } catch (e) {
-    console.log("something went wrong while assigning the code 'Geagendeerd' to the agendaitems", e);
-  }
-
-  res.send({ status: ok, statusCode: 200, body: { agendaData: agendaData, newAgenda: { id: newAgendaId, uri: newAgendaURI, data: agendaData } } }); // resultsOfSerialNumbers: resultsAfterUpdates
+    } catch (e) {
+        console.log(`error on ${newAgendaURI}`);
+        console.log("something went wrong while assigning the code 'Geagendeerd' to the agendaitems", e);
+    }
+  res.send({status: ok, statusCode: 200, body: { agendaData: agendaData, newAgenda: { id: newAgendaId, uri: newAgendaURI, data: agendaData } } }); // resultsOfSerialNumbers: resultsAfterUpdates
 });
 
 mu.app.use(mu.errorHandler);
@@ -58,8 +58,8 @@ mu.app.use(mu.errorHandler);
 // Approve agenda route
 app.post('/deleteAgenda', async (req, res) => {
   const agendaToDeleteId = req.body.agendaToDeleteId;
-  if (!agendaToDeleteId) {
-    res.send({ statusCode: 400, body: "agendaToDeleteId missing, deletion of agenda failed" });
+  if(!agendaToDeleteId){
+    res.send({statusCode: 400, body: "agendaToDeleteId missing, deletion of agenda failed"});
     return;
   }
   try {
@@ -67,9 +67,9 @@ app.post('/deleteAgenda', async (req, res) => {
     await repository.deleteSubcasePhases(agendaToDeleteURI);
     await repository.deleteAgendaitems(agendaToDeleteURI);
     await repository.deleteAgenda(agendaToDeleteURI);
-    res.send({ status: ok, statusCode: 200 });
+    res.send({status: ok, statusCode: 200 });
   } catch (e) {
     console.log(e);
-    res.send({ statusCode: 500, body: "something went wrong while deleting the agenda", e });
+    res.send({statusCode: 500, body: "something went wrong while deleting the agenda", e});
   }
 });
