@@ -28,7 +28,6 @@ INSERT DATA {
   agenda:${newUUID} a besluitvorming:Agenda ;
   dct:created "${reqDateFormatted}" ;
   dct:modified "${reqDateTimeFormatted}" ;
-  dct:type besluitvorming:Agenda ;
   besluitvorming:agendaStatus statusid:2735d084-63d1-499f-86f4-9b69eb33727f ;
   mu:uuid "${newUUID}" ;
   besluitvorming:isAgendaVoor <${sessionUri}> ;
