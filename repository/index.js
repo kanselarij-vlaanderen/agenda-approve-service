@@ -1,21 +1,29 @@
 import mu from 'mu';
+import {
+  sparqlEscapeUri,
+  sparqlEscapeString,
+  uuid as generateUuid,
+  sparqlEscapeDate,
+  sparqlEscapeDateTime
+} from 'mu';
 const moment = require('moment');
 const uuidv4 = require('uuid/v4');
 const targetGraph = "http://mu.semte.ch/application";
 
+const AGENDA_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendas/';
+
 const createNewAgenda = async (req, res, oldAgendaURI) => {
-  const newUUID = uuidv4();
-  const reqDate = moment();
-  const reqDateFormatted = reqDate.format('YYYY-MM-DD');
-  const reqDateTimeFormatted = reqDate.utc().format();
+  const newAgendaUuid = generateUuid();
+  const newAgendaUri = sparqlEscapeUri(AGENDA_RESOURCE_BASE + newAgendaUuid);
+  const creationDate = Date.now();
   const session = req.body.createdFor;
-  const serialNumbers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const {sessionUri, agendaCount, zittingDate} = await zittingInfo(session);
+  const serialNumbers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const { sessionUri, agendaCount, zittingDate } = await zittingInfo(session);
   const serialNumber = serialNumbers[agendaCount] || agendaCount;
+  const title = `Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}`;
   const query = `
 PREFIX adms: <http://www.w3.org/ns/adms#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX agenda: <http://kanselarij.vo.data.gift/id/agendas/>
 PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -25,22 +33,22 @@ PREFIX statusid: <http://kanselarij.vo.data.gift/id/agendastatus/>
 
 INSERT DATA {
   GRAPH <${targetGraph}> { 
-    agenda:${newUUID} a besluitvorming:Agenda ;
-    dct:created "${reqDateFormatted}" ;
-    dct:modified "${reqDateTimeFormatted}" ;
+    ${newAgendaUri} a besluitvorming:Agenda ;
+    dct:created ${sparqlEscapeDate(creationDate)} ;
+    dct:modified ${sparqlEscapeDateTime(creationDate)} ;
     besluitvorming:agendaStatus statusid:2735d084-63d1-499f-86f4-9b69eb33727f ;
-    mu:uuid "${newUUID}" ;
-    besluitvorming:isAgendaVoor <${sessionUri}> ;
-    dct:title "Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}" ;
-    besluitvorming:volgnummer "${serialNumber}" ;
+    mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
+    besluitvorming:isAgendaVoor ${sparqlEscapeUri(sessionUri)} ;
+    dct:title ${sparqlEscapeString(title)} ;
+    besluitvorming:volgnummer ${sparqlEscapeString(serialNumber)} ;
     ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
-    agenda:${newUUID} prov:wasRevisionOf <${oldAgendaURI}>  .
+    ${newAgendaUri} prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
   }
 }`;
   await mu.query(query).catch(err => {
-    console.error(err)
+    console.error(err);
   });
-  return [newUUID, "http://kanselarij.vo.data.gift/id/agendas/" + newUUID];
+  return [newAgendaUuid, newAgendaUri];
 };
 
 const approveAgenda = async (agendaURI) => {
