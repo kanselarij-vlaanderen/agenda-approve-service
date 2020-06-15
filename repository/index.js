@@ -25,17 +25,17 @@ PREFIX statusid: <http://kanselarij.vo.data.gift/id/agendastatus/>
 
 INSERT DATA {
   GRAPH <${targetGraph}> { 
-  agenda:${newUUID} a besluitvorming:Agenda ;
-  dct:created "${reqDateFormatted}" ;
-  dct:modified "${reqDateTimeFormatted}" ;
-  besluitvorming:agendaStatus statusid:2735d084-63d1-499f-86f4-9b69eb33727f ;
-  mu:uuid "${newUUID}" ;
-  besluitvorming:isAgendaVoor <${sessionUri}> ;
-  dct:title "Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}" ;
-  besluitvorming:volgnummer "${serialNumber}" ;
-  ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
-  agenda:${newUUID} prov:wasRevisionOf <${oldAgendaURI}>  .
-}
+    agenda:${newUUID} a besluitvorming:Agenda ;
+    dct:created "${reqDateFormatted}" ;
+    dct:modified "${reqDateTimeFormatted}" ;
+    besluitvorming:agendaStatus statusid:2735d084-63d1-499f-86f4-9b69eb33727f ;
+    mu:uuid "${newUUID}" ;
+    besluitvorming:isAgendaVoor <${sessionUri}> ;
+    dct:title "Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}" ;
+    besluitvorming:volgnummer "${serialNumber}" ;
+    ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
+    agenda:${newUUID} prov:wasRevisionOf <${oldAgendaURI}>  .
+  }
 }`;
   await mu.query(query).catch(err => {
     console.error(err)
