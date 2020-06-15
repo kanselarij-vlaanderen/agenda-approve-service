@@ -4,13 +4,18 @@ import {
   sparqlEscapeString,
   uuid as generateUuid,
   sparqlEscapeDate,
-  sparqlEscapeDateTime
+  sparqlEscapeDateTime,
+  sparqlEscapeInt
 } from 'mu';
 const moment = require('moment');
 const uuidv4 = require('uuid/v4');
 const targetGraph = "http://mu.semte.ch/application";
 
 const AGENDA_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendas/';
+const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
+const AGENDA_STATUS_APPROVED = 'http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1';
+
+const SUBCASE_PHASE_RESOURCE_BASE = 'http://data.vlaanderen.be/id/ProcedurestapFase/';
 
 const createNewAgenda = async (req, res, oldAgendaURI) => {
   const newAgendaUuid = generateUuid();
@@ -52,14 +57,16 @@ INSERT DATA {
 };
 
 const approveAgenda = async (agendaURI) => {
-  const query = `DELETE DATA {
+  const query = `
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  DELETE DATA {
     GRAPH <${targetGraph}> {
-      <${agendaURI}> <http://data.vlaanderen.be/ns/besluitvorming#agendaStatus> <http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f> .
+      ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} .
     }
   };
   INSERT DATA {
     GRAPH <${targetGraph}> {
-      <${agendaURI}> <http://data.vlaanderen.be/ns/besluitvorming#agendaStatus> <http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1> .
+      ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_APPROVED)} .
     }
   }`;
   await mu.query(query);
@@ -80,11 +87,11 @@ PREFIX statusid: <http://kanselarij.vo.data.gift/id/agendastatus/>
 SELECT ?zitting ?zittingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
   ?zitting a besluit:Vergaderactiviteit ;
            besluit:geplandeStart ?zittingDate ;
-           mu:uuid "${zittingUuid}" .
+           mu:uuid ${sparqlEscapeString(zittingUuid)} .
   ?agenda besluitvorming:isAgendaVoor ?zitting .
 } GROUP BY ?zitting ?zittingDate`;
   const data = await mu.query(query).catch(err => {
-    console.error(err)
+    console.error(err);
   });
   const firstResult = data.results.bindings[0] || {};
   return {
@@ -107,18 +114,18 @@ const getSubcasePhasesOfAgenda = async (newAgendaId, codeURI) => {
   SELECT ?agenda ?agendaitem ?subcase ?phases WHERE {
     GRAPH <${targetGraph}> {
         ?agenda a besluitvorming:Agenda ;
-                  mu:uuid "${newAgendaId}" .
+                  mu:uuid ${sparqlEscapeString(newAgendaId)} .
         ?agenda   dct:hasPart ?agendaitem .
         ?subcase  besluitvorming:isGeagendeerdVia ?agendaitem .
         OPTIONAL{ 
                   ?subcase ext:subcaseProcedurestapFase ?phases . 
-                  ?phases  ext:procedurestapFaseCode <${codeURI}> . 
+                  ?phases  ext:procedurestapFaseCode ${sparqlEscapeUri(codeURI)} . 
                 }   
     }
   }
 `;
   return await mu.query(query).catch(err => {
-    console.error(err)
+    console.error(err);
   });
 };
 
@@ -133,7 +140,7 @@ const storeAgendaItemNumbers = async (agendaUri) => {
   PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
   
   SELECT ?agendaItem WHERE {
-    <${agendaUri}> dct:hasPart ?agendaItem .
+    ${sparqlEscapeUri(agendaUri)} dct:hasPart ?agendaItem .
     OPTIONAL {
       ?agendaItem ext:prioriteit ?priority .
     }
@@ -143,17 +150,16 @@ const storeAgendaItemNumbers = async (agendaUri) => {
     }
   } ORDER BY ?priorityOrMax`;
   const sortedAgendaItemsToName = await mu.query(query).catch(err => {
-    console.error(err)
-  });
-  const triples = [];
-  sortedAgendaItemsToName.results.bindings.map((binding, index) => {
-    triples.push(`<${binding['agendaItem'].value}> ext:agendaItemNumber ${maxAgendaItemNumberSoFar + index} .`);
+    console.error(err);
   });
 
+  const triples = [];
+  sortedAgendaItemsToName.results.bindings.map((binding, index) => {
+    triples.push(`${sparqlEscapeUri(binding.agendaItem.value)} ext:agendaItemNumber ${sparqlEscapeInt(maxAgendaItemNumberSoFar + index)} .`);
+  });
   if (triples.length < 1) {
     return;
   }
-
   query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
@@ -164,12 +170,12 @@ const storeAgendaItemNumbers = async (agendaUri) => {
   
   INSERT DATA {
     GRAPH <${targetGraph}> {
-      ${triples.join("\n")}
+      ${triples.join('\n')}
     }
   }`;
-  await mu.query(query).catch(err => {
+  await mu.update(query).catch(err => {
     console.log(err);
-  })
+  });
 };
 
 const getHighestAgendaItemNumber = async (agendaUri) => {
@@ -182,7 +188,7 @@ const getHighestAgendaItemNumber = async (agendaUri) => {
   PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
   
   SELECT (MAX(?number) as ?max) WHERE {
-      <${agendaUri}> besluitvorming:isAgendaVoor ?zitting .
+      ${sparqlEscapeUri(agendaUri)} besluitvorming:isAgendaVoor ?zitting .
       ?zitting besluit:geplandeStart ?zittingDate .
       ?otherZitting besluit:geplandeStart ?otherZittingDate .
       FILTER(YEAR(?zittingDate) = YEAR(?otherZittingDate))
@@ -199,15 +205,15 @@ const createNewSubcasesPhase = async (codeURI, subcaseListOfURIS) => {
     return;
   }
   const listOfQueries = await subcaseListOfURIS.map((subcaseURI) => {
-    const newUUID = uuidv4();
-    const newURI = `http://data.vlaanderen.be/id/ProcedurestapFase/${newUUID}`;
+    const newUUID = generateUuid();
+    const newURI = SUBCASE_PHASE_RESOURCE_BASE + newUUID;
     return `
-    <${newURI}> a ext:ProcedurestapFase ;
-    mu:uuid "${newUUID}" ;
-    besluitvorming:statusdatum """${new Date().toISOString()}"""^^xsd:dateTime ;
-    ext:procedurestapFaseCode <${codeURI}> .
-    <${subcaseURI}> ext:subcaseProcedurestapFase <${newURI}> .
-    `
+    ${sparqlEscapeUri(newURI)} a ext:ProcedurestapFase ;
+    mu:uuid ${sparqlEscapeString(newUUID)} ;
+    besluitvorming:statusdatum ${sparqlEscapeDateTime(Date.now())} ;
+    ext:procedurestapFaseCode ${sparqlEscapeUri(codeURI)} .
+    ${sparqlEscapeUri(subcaseURI)} ext:subcaseProcedurestapFase ${sparqlEscapeUri(newURI)} .
+    `;
   });
 
   if (listOfQueries.length < 1) {
@@ -232,7 +238,7 @@ const createNewSubcasesPhase = async (codeURI, subcaseListOfURIS) => {
   };
 `;
   return await mu.update(query).catch(err => {
-    console.error(err)
+    console.error(err);
   });
 };
 
@@ -244,12 +250,12 @@ const getAgendaURI = async (newAgendaId) => {
 
    SELECT ?agenda WHERE {
     ?agenda a besluitvorming:Agenda ;
-    mu:uuid "${newAgendaId}" .
+      mu:uuid ${sparqlEscapeString(newAgendaId)} .
    }
  `;
 
   const data = await mu.query(query).catch(err => {
-    console.error(err)
+    console.error(err);
   });
   return data.results.bindings[0].agenda.value;
 };
@@ -265,7 +271,7 @@ const deleteAgendaitems = async (deleteAgendaURI) => {
   }
   } WHERE {
     GRAPH <${targetGraph}> { 
-    <${deleteAgendaURI}> dct:hasPart ?agendaitem .
+    ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitem .
       ?agendaitem ?p ?o .
       ?s ?pp ?agendaitem .
     }
@@ -304,7 +310,7 @@ const deleteSubcasePhases = async (deleteAgendaURI) => {
 
         SELECT (count(*) AS ?totalitems) ?subcase WHERE {
           GRAPH <${targetGraph}> {
-            <${deleteAgendaURI}> dct:hasPart ?agendaitems .
+            ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitems .
 
             ?subcase a dbpedia:UnitOfWork . 
             ?subcase besluitvorming:isGeagendeerdVia ?agendaitems .
@@ -326,15 +332,15 @@ const deleteAgenda = async (deleteAgendaURI) => {
 
   DELETE {
     GRAPH <${targetGraph}>  {
-    <${deleteAgendaURI}> ?p ?o .
-    ?s ?pp <${deleteAgendaURI}> .
+    ${sparqlEscapeUri(deleteAgendaURI)} ?p ?o .
+    ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
   }
   } WHERE {
     GRAPH <${targetGraph}> { 
-    <${deleteAgendaURI}> a besluitvorming:Agenda ;
+    ${sparqlEscapeUri(deleteAgendaURI)} a besluitvorming:Agenda ;
       ?p ?o .
       OPTIONAL {
-        ?s ?pp <${deleteAgendaURI}> .
+        ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
       }
     }
   }`;
@@ -343,7 +349,6 @@ const deleteAgenda = async (deleteAgendaURI) => {
 
 module.exports = {
   createNewAgenda,
-  getSubcasePhaseCode,
   getSubcasePhasesOfAgenda,
   storeAgendaItemNumbers,
   createNewSubcasesPhase,
@@ -353,4 +358,3 @@ module.exports = {
   deleteAgenda,
   approveAgenda
 };
-
