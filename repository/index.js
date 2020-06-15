@@ -19,7 +19,7 @@ const SUBCASE_PHASE_RESOURCE_BASE = 'http://data.vlaanderen.be/id/ProcedurestapF
 const createNewAgenda = async (req, res, oldAgendaURI) => {
   const newAgendaUuid = generateUuid();
   const newAgendaUri = sparqlEscapeUri(AGENDA_RESOURCE_BASE + newAgendaUuid);
-  const creationDate = Date.now();
+  const creationDate = new Date();
   const session = req.body.createdFor;
   const serialNumbers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const { sessionUri, agendaCount, zittingDate } = await zittingInfo(session);
@@ -209,7 +209,7 @@ const createNewSubcasesPhase = async (codeURI, subcaseListOfURIS) => {
     return `
     ${sparqlEscapeUri(newURI)} a ext:ProcedurestapFase ;
     mu:uuid ${sparqlEscapeString(newUUID)} ;
-    besluitvorming:statusdatum ${sparqlEscapeDateTime(Date.now())} ;
+    besluitvorming:statusdatum ${sparqlEscapeDateTime(new Date())} ;
     ext:procedurestapFaseCode ${sparqlEscapeUri(codeURI)} .
     ${sparqlEscapeUri(subcaseURI)} ext:subcaseProcedurestapFase ${sparqlEscapeUri(newURI)} .
     `;
