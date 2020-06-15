@@ -8,7 +8,6 @@ import {
   sparqlEscapeInt
 } from 'mu';
 const moment = require('moment');
-const uuidv4 = require('uuid/v4');
 const targetGraph = "http://mu.semte.ch/application";
 
 const AGENDA_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendas/';
