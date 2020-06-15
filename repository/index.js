@@ -94,30 +94,6 @@ SELECT ?zitting ?zittingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
   };
 };
 
-const getSubcasePhaseCode = async () => {
-  const query = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  
-  SELECT ?code WHERE {
-    GRAPH <${targetGraph}> {
-          ?code a ext:ProcedurestapFaseCode ;
-                  skos:prefLabel ?label .
-                   FILTER(UCASE(?label) = UCASE("geagendeerd"))  
-    }
-  }
-`;
-  const data = await mu.query(query).catch(err => {
-    console.error(err)
-  });
-  return data.results.bindings[0].code.value;
-};
-
 const getSubcasePhasesOfAgenda = async (newAgendaId, codeURI) => {
   const query = `
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>

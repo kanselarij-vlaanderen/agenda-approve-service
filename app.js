@@ -42,10 +42,10 @@ app.post('/approveAgenda', async (req, res) => {
   await repository.storeAgendaItemNumbers(oldAgendaURI);
 
   try {
-    const codeURI = await repository.getSubcasePhaseCode();
-    const subcasePhasesOfAgenda = await repository.getSubcasePhasesOfAgenda(newAgendaId, codeURI);
+    const SUBCASE_PHASE_GEAGENDEERD = 'http://example.com/step/3e6dba4f-5c3c-439a-993e-92348ec73642';
+    const subcasePhasesOfAgenda = await repository.getSubcasePhasesOfAgenda(newAgendaId, SUBCASE_PHASE_GEAGENDEERD);
 
-    await util.checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, codeURI);
+    await util.checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, SUBCASE_PHASE_GEAGENDEERD);
     } catch (e) {
         console.log(`error on ${newAgendaURI}`);
         console.log("something went wrong while assigning the code 'Geagendeerd' to the agendaitems", e);
