@@ -158,6 +158,7 @@ INSERT DATA {
 };
 
 const getHighestAgendaItemNumber = async (agendaUri) => {
+  // TODO: This query seems needlessly complex. Why the "otherzitting" and comparing by year?
   const query = `
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
