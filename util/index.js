@@ -3,6 +3,7 @@ const targetGraph = "http://mu.semte.ch/application";
 const batchSize = process.env.BATCH_SIZE || 100;
 const moment = require('moment');
 import mu from 'mu';
+import { sparqlEscapeUri } from 'mu';
 
 function getBindingValue(binding, property, fallback) {
   binding = binding || {};
@@ -18,7 +19,7 @@ const updatePropertiesOnAgendaItems = async function (agendaUri) {
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX dct: <http://purl.org/dc/terms/>
   SELECT DISTINCT ?target WHERE {
-    <${agendaUri}> dct:hasPart ?target .
+    ${sparqlEscapeUri(agendaUri)} dct:hasPart ?target .
     ?target ext:replacesPrevious ?previousURI .
   }  
   `;
