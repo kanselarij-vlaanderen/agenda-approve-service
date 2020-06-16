@@ -18,7 +18,7 @@ const SUBCASE_PHASE_RESOURCE_BASE = 'http://data.vlaanderen.be/id/ProcedurestapF
 
 const createNewAgenda = async (req, res, oldAgendaURI) => {
   const newAgendaUuid = generateUuid();
-  const newAgendaUri = sparqlEscapeUri(AGENDA_RESOURCE_BASE + newAgendaUuid);
+  const newAgendaUri = AGENDA_RESOURCE_BASE + newAgendaUuid;
   const creationDate = new Date();
   const session = req.body.createdFor;
   const serialNumbers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -34,7 +34,7 @@ PREFIX dct: <http://purl.org/dc/terms/>
 
 INSERT DATA {
     GRAPH <${targetGraph}> { 
-        ${newAgendaUri} a besluitvorming:Agenda ;
+        ${sparqlEscapeUri(newAgendaUri)} a besluitvorming:Agenda ;
             mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
             dct:created ${sparqlEscapeDate(creationDate)} ;
             dct:modified ${sparqlEscapeDateTime(creationDate)} ;
