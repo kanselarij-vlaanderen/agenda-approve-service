@@ -74,11 +74,12 @@ PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
 SELECT ?zitting ?zittingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
-  ?zitting a besluit:Vergaderactiviteit ;
-           besluit:geplandeStart ?zittingDate ;
-           mu:uuid ${sparqlEscapeString(zittingUuid)} .
-  ?agenda besluitvorming:isAgendaVoor ?zitting .
-} GROUP BY ?zitting ?zittingDate`;
+    ?zitting a besluit:Vergaderactiviteit ;
+        besluit:geplandeStart ?zittingDate ;
+        mu:uuid ${sparqlEscapeString(zittingUuid)} .
+    ?agenda besluitvorming:isAgendaVoor ?zitting .
+}
+GROUP BY ?zitting ?zittingDate`;
   const data = await mu.query(query).catch(err => {
     console.error(err);
   });
