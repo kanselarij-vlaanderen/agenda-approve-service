@@ -69,15 +69,9 @@ const approveAgenda = async (agendaURI) => {
 
 const zittingInfo = async (zittingUuid) => {
   const query = `
-PREFIX adms: <http://www.w3.org/ns/adms#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX agenda: <http://kanselarij.vo.data.gift/id/agendas/>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-PREFIX prov: <http://www.w3.org/ns/prov#>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX statusid: <http://kanselarij.vo.data.gift/id/agendastatus/>
 
 SELECT ?zitting ?zittingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
   ?zitting a besluit:Vergaderactiviteit ;
