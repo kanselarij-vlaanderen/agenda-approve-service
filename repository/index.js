@@ -26,28 +26,25 @@ const createNewAgenda = async (req, res, oldAgendaURI) => {
   const serialNumber = serialNumbers[agendaCount] || agendaCount;
   const title = `Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}`;
   const query = `
-PREFIX adms: <http://www.w3.org/ns/adms#>
-PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
 PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX statusid: <http://kanselarij.vo.data.gift/id/agendastatus/>
 
 INSERT DATA {
-  GRAPH <${targetGraph}> { 
-    ${newAgendaUri} a besluitvorming:Agenda ;
-    dct:created ${sparqlEscapeDate(creationDate)} ;
-    dct:modified ${sparqlEscapeDateTime(creationDate)} ;
-    besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
-    mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
-    besluitvorming:isAgendaVoor ${sparqlEscapeUri(sessionUri)} ;
-    dct:title ${sparqlEscapeString(title)} ;
-    besluitvorming:volgnummer ${sparqlEscapeString(serialNumber)} ;
-    ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
-    ${newAgendaUri} prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
-  }
+    GRAPH <${targetGraph}> { 
+        ${newAgendaUri} a besluitvorming:Agenda ;
+            mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
+            dct:created ${sparqlEscapeDate(creationDate)} ;
+            dct:modified ${sparqlEscapeDateTime(creationDate)} ;
+            dct:title ${sparqlEscapeString(title)} ;
+            besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
+            besluitvorming:isAgendaVoor ${sparqlEscapeUri(sessionUri)} ;
+            besluitvorming:volgnummer ${sparqlEscapeString(serialNumber)} ;
+            ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> ;
+            prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
+    }
 }`;
   await mu.query(query).catch(err => {
     console.error(err);
