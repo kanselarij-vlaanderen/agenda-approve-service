@@ -42,7 +42,6 @@ INSERT DATA {
             besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
             besluitvorming:isAgendaVoor ${sparqlEscapeUri(sessionUri)} ;
             besluitvorming:volgnummer ${sparqlEscapeString(serialNumber)} ;
-            ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> ;
             prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
     }
 }`;
