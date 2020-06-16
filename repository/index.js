@@ -158,23 +158,21 @@ INSERT DATA {
 };
 
 const getHighestAgendaItemNumber = async (agendaUri) => {
-  const query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  
-  SELECT (MAX(?number) as ?max) WHERE {
-      ${sparqlEscapeUri(agendaUri)} besluitvorming:isAgendaVoor ?zitting .
-      ?zitting besluit:geplandeStart ?zittingDate .
-      ?otherZitting besluit:geplandeStart ?otherZittingDate .
-      FILTER(YEAR(?zittingDate) = YEAR(?otherZittingDate))
-      ?otherAgenda besluitvorming:isAgendaVoor ?otherZitting .
-      ?otherAgenda dct:hasPart ?agendaItem .
-      ?agendaItem ext:agendaItemNumber ?number .
-  }`;
+  const query = `
+PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+
+SELECT (MAX(?number) as ?max) WHERE {
+    ${sparqlEscapeUri(agendaUri)} besluitvorming:isAgendaVoor ?zitting .
+    ?zitting besluit:geplandeStart ?zittingDate .
+    ?otherZitting besluit:geplandeStart ?otherZittingDate .
+    FILTER(YEAR(?zittingDate) = YEAR(?otherZittingDate))
+    ?otherAgenda besluitvorming:isAgendaVoor ?otherZitting .
+    ?otherAgenda dct:hasPart ?agendaItem .
+    ?agendaItem ext:agendaItemNumber ?number .
+}`;
   const response = await mu.query(query);
   return parseInt(((response.results.bindings[0] || {})['max'] || {}).value || 0);
 };
