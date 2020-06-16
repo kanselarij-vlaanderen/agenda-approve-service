@@ -1,7 +1,6 @@
 const repository = require('./../repository/index.js');
 const targetGraph = "http://mu.semte.ch/application";
 const batchSize = process.env.BATCH_SIZE || 100;
-const moment = require('moment');
 import mu from 'mu';
 import { sparqlEscapeUri } from 'mu';
 
