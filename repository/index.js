@@ -186,11 +186,11 @@ const createNewSubcasesPhase = async (codeURI, subcaseListOfURIS) => {
     const newUUID = generateUuid();
     const newURI = SUBCASE_PHASE_RESOURCE_BASE + newUUID;
     return `
-    ${sparqlEscapeUri(newURI)} a ext:ProcedurestapFase ;
-    mu:uuid ${sparqlEscapeString(newUUID)} ;
-    besluitvorming:statusdatum ${sparqlEscapeDateTime(new Date())} ;
-    ext:procedurestapFaseCode ${sparqlEscapeUri(codeURI)} .
-    ${sparqlEscapeUri(subcaseURI)} ext:subcaseProcedurestapFase ${sparqlEscapeUri(newURI)} .
+${sparqlEscapeUri(newURI)} a ext:ProcedurestapFase ;
+      mu:uuid ${sparqlEscapeString(newUUID)} ;
+      besluitvorming:statusdatum ${sparqlEscapeDateTime(new Date())} ;
+      ext:procedurestapFaseCode ${sparqlEscapeUri(codeURI)} .
+${sparqlEscapeUri(subcaseURI)} ext:subcaseProcedurestapFase ${sparqlEscapeUri(newURI)} .
     `;
   });
 
@@ -198,22 +198,18 @@ const createNewSubcasesPhase = async (codeURI, subcaseListOfURIS) => {
     return;
   }
 
-  const insertString = listOfQueries.join(' ');
+  const insertString = listOfQueries.join('\n        ');
   console.log(insertString);
   const query = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-    
-  INSERT DATA {
-   GRAPH <${targetGraph}> {
-          ${insertString}
-   }
-  };
+PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  
+INSERT DATA {
+    GRAPH <${targetGraph}> {
+        ${insertString}
+    }
+};
 `;
   return await mu.update(query).catch(err => {
     console.error(err);
@@ -224,7 +220,6 @@ const getAgendaURI = async (newAgendaId) => {
   const query = `
    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 
    SELECT ?agenda WHERE {
     ?agenda a besluitvorming:Agenda ;
