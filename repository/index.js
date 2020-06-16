@@ -144,19 +144,14 @@ ORDER BY ?priorityOrMax`;
   if (triples.length < 1) {
     return;
   }
-  query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  
-  INSERT DATA {
+  query = `
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+
+INSERT DATA {
     GRAPH <${targetGraph}> {
-      ${triples.join('\n')}
+        ${triples.join('\n        ')}
     }
-  }`;
+}`;
   await mu.update(query).catch(err => {
     console.log(err);
   });
