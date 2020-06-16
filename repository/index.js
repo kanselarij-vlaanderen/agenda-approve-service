@@ -93,26 +93,23 @@ GROUP BY ?zitting ?zittingDate`;
 
 const getSubcasePhasesOfAgenda = async (newAgendaId, codeURI) => {
   const query = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  
-  SELECT ?agenda ?agendaitem ?subcase ?phases WHERE {
+PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+PREFIX dct: <http://purl.org/dc/terms/>
+
+SELECT ?agenda ?agendaitem ?subcase ?phases WHERE {
     GRAPH <${targetGraph}> {
         ?agenda a besluitvorming:Agenda ;
-                  mu:uuid ${sparqlEscapeString(newAgendaId)} .
-        ?agenda   dct:hasPart ?agendaitem .
-        ?subcase  besluitvorming:isGeagendeerdVia ?agendaitem .
-        OPTIONAL{ 
-                  ?subcase ext:subcaseProcedurestapFase ?phases . 
-                  ?phases  ext:procedurestapFaseCode ${sparqlEscapeUri(codeURI)} . 
-                }   
+            mu:uuid ${sparqlEscapeString(newAgendaId)} ;
+            dct:hasPart ?agendaitem .
+        ?subcase besluitvorming:isGeagendeerdVia ?agendaitem .
+        OPTIONAL {
+            ?subcase ext:subcaseProcedurestapFase ?phases . 
+            ?phases ext:procedurestapFaseCode ${sparqlEscapeUri(codeURI)} . 
+        }   
     }
-  }
+}
 `;
   return await mu.query(query).catch(err => {
     console.error(err);
