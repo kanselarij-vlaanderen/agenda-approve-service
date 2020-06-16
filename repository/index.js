@@ -40,7 +40,7 @@ INSERT DATA {
     ${newAgendaUri} a besluitvorming:Agenda ;
     dct:created ${sparqlEscapeDate(creationDate)} ;
     dct:modified ${sparqlEscapeDateTime(creationDate)} ;
-    besluitvorming:agendaStatus statusid:2735d084-63d1-499f-86f4-9b69eb33727f ;
+    besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
     mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
     besluitvorming:isAgendaVoor ${sparqlEscapeUri(sessionUri)} ;
     dct:title ${sparqlEscapeString(title)} ;
