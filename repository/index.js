@@ -118,24 +118,21 @@ SELECT ?agenda ?agendaitem ?subcase ?phases WHERE {
 
 const storeAgendaItemNumbers = async (agendaUri) => {
   const maxAgendaItemNumberSoFar = await getHighestAgendaItemNumber(agendaUri);
-  let query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  
-  SELECT ?agendaItem WHERE {
+  let query = `
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+
+SELECT ?agendaItem WHERE {
     ${sparqlEscapeUri(agendaUri)} dct:hasPart ?agendaItem .
     OPTIONAL {
-      ?agendaItem ext:prioriteit ?priority .
+        ?agendaItem ext:prioriteit ?priority .
     }
     BIND(IF(BOUND(?priority), ?priority, 1000000) AS ?priorityOrMax)
     FILTER NOT EXISTS {
-      ?agendaItem ext:agendaItemNumber ?number .
+        ?agendaItem ext:agendaItemNumber ?number .
     }
-  } ORDER BY ?priorityOrMax`;
+}
+ORDER BY ?priorityOrMax`;
   const sortedAgendaItemsToName = await mu.query(query).catch(err => {
     console.error(err);
   });
