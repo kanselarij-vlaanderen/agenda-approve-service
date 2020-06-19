@@ -98,25 +98,6 @@ const parseSparqlResults = (data) => {
   })
 };
 
-const checkForPhasesAndAssignMissingPhases = async (subcasePhasesOfAgenda, codeURI) => {
-  if (subcasePhasesOfAgenda) {
-    const parsedObjects = parseSparqlResults(subcasePhasesOfAgenda);
-    const uniqueSubcaseIds = [...new Set(parsedObjects.map((item) => item['subcase']))];
-    let subcaseListOfURIS = [];
-    if (uniqueSubcaseIds.length < 1) {
-      return;
-    }
-    await uniqueSubcaseIds.map((id) => {
-      const foundObject = parsedObjects.find((item) => item.subcase === id);
-      if (foundObject && foundObject.subcase && !foundObject.phases) {
-        subcaseListOfURIS.push(foundObject.subcase);
-      }
-      return id;
-    });
-    return await repository.createNewSubcasesPhase(codeURI, subcaseListOfURIS)
-  }
-};
-
 const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
   // The bind of ?uuid is a workaround to get a unique id for each STRUUID call.
   // SUBQUERY: Is needed to make sure we have the same UUID for the URI, since using ?uuid generated a new one
@@ -149,7 +130,6 @@ const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
 };
 
 module.exports = {
-  checkForPhasesAndAssignMissingPhases,
   updatePropertiesOnAgendaItems,
   copyAgendaItems
 };
