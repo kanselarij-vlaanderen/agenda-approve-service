@@ -1,8 +1,8 @@
 const repository = require('./../repository/index.js');
 const targetGraph = "http://mu.semte.ch/application";
 const batchSize = process.env.BATCH_SIZE || 100;
-const moment = require('moment');
 import mu from 'mu';
+import { sparqlEscapeUri } from 'mu';
 
 function getBindingValue(binding, property, fallback) {
   binding = binding || {};
@@ -14,13 +14,13 @@ function getBindingValue(binding, property, fallback) {
 }
 
 const updatePropertiesOnAgendaItems = async function (agendaUri) {
-  const selectTargets = `  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  SELECT DISTINCT ?target WHERE {
-    <${agendaUri}> dct:hasPart ?target .
+  const selectTargets = `
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+PREFIX dct: <http://purl.org/dc/terms/>
+SELECT DISTINCT ?target WHERE {
+    ${sparqlEscapeUri(agendaUri)} dct:hasPart ?target .
     ?target ext:replacesPrevious ?previousURI .
-  }  
+}  
   `;
   const data = await mu.query(selectTargets);
   const targets = data.results.bindings.map((binding) => {

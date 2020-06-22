@@ -1,58 +1,67 @@
 import mu from 'mu';
+import {
+  sparqlEscapeUri,
+  sparqlEscapeString,
+  uuid as generateUuid,
+  sparqlEscapeDate,
+  sparqlEscapeDateTime,
+  sparqlEscapeInt
+} from 'mu';
 const moment = require('moment');
-const uuidv4 = require('uuid/v4');
 const targetGraph = "http://mu.semte.ch/application";
 
+const AGENDA_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendas/';
+const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
+const AGENDA_STATUS_APPROVED = 'http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1';
+
+const SUBCASE_PHASE_RESOURCE_BASE = 'http://data.vlaanderen.be/id/ProcedurestapFase/';
+
 const createNewAgenda = async (req, res, oldAgendaURI) => {
-  const newUUID = uuidv4();
-  const reqDate = moment();
-  const reqDateFormatted = reqDate.format('YYYY-MM-DD');
-  const reqDateTimeFormatted = reqDate.utc().format();
+  const newAgendaUuid = generateUuid();
+  const newAgendaUri = AGENDA_RESOURCE_BASE + newAgendaUuid;
+  const creationDate = new Date();
   const session = req.body.createdFor;
-  const serialNumbers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const {sessionUri, agendaCount, zittingDate} = await zittingInfo(session);
+  const serialNumbers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const { sessionUri, agendaCount, zittingDate } = await zittingInfo(session);
   const serialNumber = serialNumbers[agendaCount] || agendaCount;
+  const title = `Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}`;
   const query = `
-PREFIX adms: <http://www.w3.org/ns/adms#>
-PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX agenda: <http://kanselarij.vo.data.gift/id/agendas/>
 PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX statusid: <http://kanselarij.vo.data.gift/id/agendastatus/>
 
 INSERT DATA {
-  GRAPH <${targetGraph}> { 
-  agenda:${newUUID} a besluitvorming:Agenda ;
-  dct:created "${reqDateFormatted}" ;
-  dct:modified "${reqDateTimeFormatted}" ;
-  dct:type besluitvorming:Agenda ;
-  besluitvorming:agendaStatus statusid:2735d084-63d1-499f-86f4-9b69eb33727f ;
-  mu:uuid "${newUUID}" ;
-  besluitvorming:isAgendaVoor <${sessionUri}> ;
-  dct:title "Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}" ;
-  besluitvorming:volgnummer "${serialNumber}" ;
-  ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
-  agenda:${newUUID} prov:wasRevisionOf <${oldAgendaURI}>  .
-}
+    GRAPH <${targetGraph}> { 
+        ${sparqlEscapeUri(newAgendaUri)} a besluitvorming:Agenda ;
+            mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
+            dct:created ${sparqlEscapeDate(creationDate)} ;
+            dct:modified ${sparqlEscapeDateTime(creationDate)} ;
+            dct:title ${sparqlEscapeString(title)} ;
+            besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
+            besluitvorming:isAgendaVoor ${sparqlEscapeUri(sessionUri)} ;
+            besluitvorming:volgnummer ${sparqlEscapeString(serialNumber)} ;
+            prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
+    }
 }`;
   await mu.query(query).catch(err => {
-    console.error(err)
+    console.error(err);
   });
-  return [newUUID, "http://kanselarij.vo.data.gift/id/agendas/" + newUUID];
+  return [newAgendaUuid, newAgendaUri];
 };
 
 const approveAgenda = async (agendaURI) => {
-  const query = `DELETE DATA {
+  const query = `
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  DELETE DATA {
     GRAPH <${targetGraph}> {
-      <${agendaURI}> <http://data.vlaanderen.be/ns/besluitvorming#agendaStatus> <http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f> .
+      ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} .
     }
   };
   INSERT DATA {
     GRAPH <${targetGraph}> {
-      <${agendaURI}> <http://data.vlaanderen.be/ns/besluitvorming#agendaStatus> <http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1> .
+      ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_APPROVED)} .
     }
   }`;
   await mu.query(query);
@@ -60,24 +69,19 @@ const approveAgenda = async (agendaURI) => {
 
 const zittingInfo = async (zittingUuid) => {
   const query = `
-PREFIX adms: <http://www.w3.org/ns/adms#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX agenda: <http://kanselarij.vo.data.gift/id/agendas/>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-PREFIX prov: <http://www.w3.org/ns/prov#>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX statusid: <http://kanselarij.vo.data.gift/id/agendastatus/>
 
 SELECT ?zitting ?zittingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
-  ?zitting a besluit:Vergaderactiviteit ;
-           besluit:geplandeStart ?zittingDate ;
-           mu:uuid "${zittingUuid}" .
-  ?agenda besluitvorming:isAgendaVoor ?zitting .
-} GROUP BY ?zitting ?zittingDate`;
+    ?zitting a besluit:Vergaderactiviteit ;
+        besluit:geplandeStart ?zittingDate ;
+        mu:uuid ${sparqlEscapeString(zittingUuid)} .
+    ?agenda besluitvorming:isAgendaVoor ?zitting .
+}
+GROUP BY ?zitting ?zittingDate`;
   const data = await mu.query(query).catch(err => {
-    console.error(err)
+    console.error(err);
   });
   const firstResult = data.results.bindings[0] || {};
   return {
@@ -89,72 +93,62 @@ SELECT ?zitting ?zittingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
 
 const storeAgendaItemNumbers = async (agendaUri) => {
   const maxAgendaItemNumberSoFar = await getHighestAgendaItemNumber(agendaUri);
-  let query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  
-  SELECT ?agendaItem WHERE {
-    <${agendaUri}> dct:hasPart ?agendaItem .
+  let query = `
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+
+SELECT ?agendaItem WHERE {
+    ${sparqlEscapeUri(agendaUri)} dct:hasPart ?agendaItem .
     OPTIONAL {
-      ?agendaItem ext:prioriteit ?priority .
+        ?agendaItem ext:prioriteit ?priority .
     }
     BIND(IF(BOUND(?priority), ?priority, 1000000) AS ?priorityOrMax)
     FILTER NOT EXISTS {
-      ?agendaItem ext:agendaItemNumber ?number .
+        ?agendaItem ext:agendaItemNumber ?number .
     }
-  } ORDER BY ?priorityOrMax`;
+}
+ORDER BY ?priorityOrMax`;
   const sortedAgendaItemsToName = await mu.query(query).catch(err => {
-    console.error(err)
-  });
-  const triples = [];
-  sortedAgendaItemsToName.results.bindings.map((binding, index) => {
-    triples.push(`<${binding['agendaItem'].value}> ext:agendaItemNumber ${maxAgendaItemNumberSoFar + index} .`);
+    console.error(err);
   });
 
+  const triples = [];
+  sortedAgendaItemsToName.results.bindings.map((binding, index) => {
+    triples.push(`${sparqlEscapeUri(binding.agendaItem.value)} ext:agendaItemNumber ${sparqlEscapeInt(maxAgendaItemNumberSoFar + index)} .`);
+  });
   if (triples.length < 1) {
     return;
   }
+  query = `
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 
-  query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  
-  INSERT DATA {
+INSERT DATA {
     GRAPH <${targetGraph}> {
-      ${triples.join("\n")}
+        ${triples.join('\n        ')}
     }
-  }`;
-  await mu.query(query).catch(err => {
+}`;
+  await mu.update(query).catch(err => {
     console.log(err);
-  })
+  });
 };
 
 const getHighestAgendaItemNumber = async (agendaUri) => {
-  const query = `PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-  
-  SELECT (MAX(?number) as ?max) WHERE {
-      <${agendaUri}> besluitvorming:isAgendaVoor ?zitting .
-      ?zitting besluit:geplandeStart ?zittingDate .
-      ?otherZitting besluit:geplandeStart ?otherZittingDate .
-      FILTER(YEAR(?zittingDate) = YEAR(?otherZittingDate))
-      ?otherAgenda besluitvorming:isAgendaVoor ?otherZitting .
-      ?otherAgenda dct:hasPart ?agendaItem .
-      ?agendaItem ext:agendaItemNumber ?number .
-  }`;
+  // TODO: This query seems needlessly complex. Why the "otherzitting" and comparing by year?
+  const query = `
+PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+
+SELECT (MAX(?number) as ?max) WHERE {
+    ${sparqlEscapeUri(agendaUri)} besluitvorming:isAgendaVoor ?zitting .
+    ?zitting besluit:geplandeStart ?zittingDate .
+    ?otherZitting besluit:geplandeStart ?otherZittingDate .
+    FILTER(YEAR(?zittingDate) = YEAR(?otherZittingDate))
+    ?otherAgenda besluitvorming:isAgendaVoor ?otherZitting .
+    ?otherAgenda dct:hasPart ?agendaItem .
+    ?agendaItem ext:agendaItemNumber ?number .
+}`;
   const response = await mu.query(query);
   return parseInt(((response.results.bindings[0] || {})['max'] || {}).value || 0);
 };
@@ -163,16 +157,15 @@ const getAgendaURI = async (newAgendaId) => {
   const query = `
    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 
    SELECT ?agenda WHERE {
     ?agenda a besluitvorming:Agenda ;
-    mu:uuid "${newAgendaId}" .
+      mu:uuid ${sparqlEscapeString(newAgendaId)} .
    }
  `;
 
   const data = await mu.query(query).catch(err => {
-    console.error(err)
+    console.error(err);
   });
   return data.results.bindings[0].agenda.value;
 };
@@ -188,7 +181,7 @@ const deleteAgendaitems = async (deleteAgendaURI) => {
   }
   } WHERE {
     GRAPH <${targetGraph}> { 
-    <${deleteAgendaURI}> dct:hasPart ?agendaitem .
+    ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitem .
       ?agendaitem ?p ?o .
       ?s ?pp ?agendaitem .
     }
@@ -228,7 +221,7 @@ const deleteAgendaActivities = async (deleteAgendaURI) => {
 
         SELECT (count(*) AS ?totalitems) ?subcase ?activity WHERE {
           GRAPH <${targetGraph}> {
-            <${deleteAgendaURI}> dct:hasPart ?agendaitems .
+            ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitems .
 
             ?subcase a dbpedia:UnitOfWork . 
             ?activity a besluitvorming:Agendering .
@@ -252,15 +245,15 @@ const deleteAgenda = async (deleteAgendaURI) => {
 
   DELETE {
     GRAPH <${targetGraph}>  {
-    <${deleteAgendaURI}> ?p ?o .
-    ?s ?pp <${deleteAgendaURI}> .
+    ${sparqlEscapeUri(deleteAgendaURI)} ?p ?o .
+    ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
   }
   } WHERE {
     GRAPH <${targetGraph}> { 
-    <${deleteAgendaURI}> a besluitvorming:Agenda ;
+    ${sparqlEscapeUri(deleteAgendaURI)} a besluitvorming:Agenda ;
       ?p ?o .
       OPTIONAL {
-        ?s ?pp <${deleteAgendaURI}> .
+        ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
       }
     }
   }`;
@@ -276,4 +269,3 @@ module.exports = {
   deleteAgenda,
   approveAgenda
 };
-
