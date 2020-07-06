@@ -91,31 +91,6 @@ GROUP BY ?zitting ?zittingDate`;
   };
 };
 
-const getSubcasePhasesOfAgenda = async (newAgendaId, codeURI) => {
-  const query = `
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-PREFIX dct: <http://purl.org/dc/terms/>
-
-SELECT ?agenda ?agendaitem ?subcase ?phases WHERE {
-    GRAPH <${targetGraph}> {
-        ?agenda a besluitvorming:Agenda ;
-            mu:uuid ${sparqlEscapeString(newAgendaId)} ;
-            dct:hasPart ?agendaitem .
-        ?subcase besluitvorming:isGeagendeerdVia ?agendaitem .
-        OPTIONAL {
-            ?subcase ext:subcaseProcedurestapFase ?phases . 
-            ?phases ext:procedurestapFaseCode ${sparqlEscapeUri(codeURI)} . 
-        }   
-    }
-}
-`;
-  return await mu.query(query).catch(err => {
-    console.error(err);
-  });
-};
-
 const storeAgendaItemNumbers = async (agendaUri) => {
   const maxAgendaItemNumberSoFar = await getHighestAgendaItemNumber(agendaUri);
   let query = `
@@ -178,44 +153,6 @@ SELECT (MAX(?number) as ?max) WHERE {
   return parseInt(((response.results.bindings[0] || {})['max'] || {}).value || 0);
 };
 
-const createNewSubcasesPhase = async (codeURI, subcaseListOfURIS) => {
-  if (subcaseListOfURIS.length < 1) {
-    return;
-  }
-  const listOfQueries = await subcaseListOfURIS.map((subcaseURI) => {
-    const newUUID = generateUuid();
-    const newURI = SUBCASE_PHASE_RESOURCE_BASE + newUUID;
-    return `
-${sparqlEscapeUri(newURI)} a ext:ProcedurestapFase ;
-      mu:uuid ${sparqlEscapeString(newUUID)} ;
-      besluitvorming:statusdatum ${sparqlEscapeDateTime(new Date())} ;
-      ext:procedurestapFaseCode ${sparqlEscapeUri(codeURI)} .
-${sparqlEscapeUri(subcaseURI)} ext:subcaseProcedurestapFase ${sparqlEscapeUri(newURI)} .
-    `;
-  });
-
-  if (listOfQueries.length < 1) {
-    return;
-  }
-
-  const insertString = listOfQueries.join('\n        ');
-  console.log(insertString);
-  const query = `
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  
-INSERT DATA {
-    GRAPH <${targetGraph}> {
-        ${insertString}
-    }
-};
-`;
-  return await mu.update(query).catch(err => {
-    console.error(err);
-  });
-};
-
 const getAgendaURI = async (newAgendaId) => {
   const query = `
    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -252,7 +189,7 @@ const deleteAgendaitems = async (deleteAgendaURI) => {
   await mu.query(query);
 };
 
-const deleteSubcasePhases = async (deleteAgendaURI) => {
+const deleteAgendaActivities = async (deleteAgendaURI) => {
   const query = `
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -261,11 +198,11 @@ const deleteSubcasePhases = async (deleteAgendaURI) => {
 
   DELETE {
     GRAPH <${targetGraph}> {
-
     ?subcase besluitvorming:isAangevraagdVoor ?session .
-    ?subcase ext:subcaseProcedurestapFase ?phase .
-    ?phase ?p ?o .
-    ?subcase besluitvorming:isGeagendeerdVia ?agendapunt .
+    ?activity a besluitvorming:Agendering .
+    ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
+    ?activity besluitvorming:genereertAgendapunt ?agendapunt . 
+    ?activity ?p ?o .
     }
   }
   
@@ -274,23 +211,26 @@ const deleteSubcasePhases = async (deleteAgendaURI) => {
 
     ?subcase a dbpedia:UnitOfWork .
     OPTIONAL { ?subcase besluitvorming:isAangevraagdVoor ?session .}
-    OPTIONAL { ?subcase ext:subcaseProcedurestapFase ?phase .
-      OPTIONAL { ?phase ?p ?o . }
-      }
-    OPTIONAL { ?subcase besluitvorming:isGeagendeerdVia ?agendapunt . }
+    OPTIONAL { 
+      ?activity besluitvorming:genereertAgendapunt ?agendapunt .
+      ?activity a besluitvorming:Agendering .
+      ?activity ?p ?o . 
+    }
     
       FILTER (?totalitems = 1)  {
 
-        SELECT (count(*) AS ?totalitems) ?subcase WHERE {
+        SELECT (count(*) AS ?totalitems) ?subcase ?activity WHERE {
           GRAPH <${targetGraph}> {
             ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitems .
 
             ?subcase a dbpedia:UnitOfWork . 
-            ?subcase besluitvorming:isGeagendeerdVia ?agendaitems .
-            ?subcase besluitvorming:isGeagendeerdVia ?totalitems .
+            ?activity a besluitvorming:Agendering .
+            ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
+            ?activity besluitvorming:genereertAgendapunt ?agendaitems . 
+            ?activity besluitvorming:genereertAgendapunt ?totalitems . 
           }
         }
-        GROUP BY ?subcase
+        GROUP BY ?subcase ?activity
       }
        
     }
@@ -322,11 +262,9 @@ const deleteAgenda = async (deleteAgendaURI) => {
 
 module.exports = {
   createNewAgenda,
-  getSubcasePhasesOfAgenda,
   storeAgendaItemNumbers,
-  createNewSubcasesPhase,
   getAgendaURI,
-  deleteSubcasePhases,
+  deleteAgendaActivities,
   deleteAgendaitems,
   deleteAgenda,
   approveAgenda

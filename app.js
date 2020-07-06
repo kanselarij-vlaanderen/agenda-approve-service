@@ -38,18 +38,8 @@ app.post('/approveAgenda', async (req, res) => {
   // Copy old agenda data to new agenda.
   const agendaData = await util.copyAgendaItems(oldAgendaURI, newAgendaURI);
   await repository.approveAgenda(oldAgendaURI);
-
   await repository.storeAgendaItemNumbers(oldAgendaURI);
 
-  try {
-    const SUBCASE_PHASE_GEAGENDEERD = 'http://example.com/step/3e6dba4f-5c3c-439a-993e-92348ec73642';
-    const subcasePhasesOfAgenda = await repository.getSubcasePhasesOfAgenda(newAgendaId, SUBCASE_PHASE_GEAGENDEERD);
-
-    await util.checkForPhasesAndAssignMissingPhases(subcasePhasesOfAgenda, SUBCASE_PHASE_GEAGENDEERD);
-    } catch (e) {
-        console.log(`error on ${newAgendaURI}`);
-        console.log("something went wrong while assigning the code 'Geagendeerd' to the agendaitems", e);
-    }
   res.send({status: ok, statusCode: 200, body: { agendaData: agendaData, newAgenda: { id: newAgendaId, uri: newAgendaURI, data: agendaData } } }); // resultsOfSerialNumbers: resultsAfterUpdates
 });
 
@@ -64,7 +54,7 @@ app.post('/deleteAgenda', async (req, res) => {
   }
   try {
     const agendaToDeleteURI = await repository.getAgendaURI(agendaToDeleteId);
-    await repository.deleteSubcasePhases(agendaToDeleteURI);
+    await repository.deleteAgendaActivities(agendaToDeleteURI);
     await repository.deleteAgendaitems(agendaToDeleteURI);
     await repository.deleteAgenda(agendaToDeleteURI);
     res.send({status: ok, statusCode: 200 });
