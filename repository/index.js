@@ -32,7 +32,8 @@ INSERT DATA {
   besluitvorming:agendaStatus statusid:2735d084-63d1-499f-86f4-9b69eb33727f ;
   mu:uuid "${newUUID}" ;
   besluitvorming:isAgendaVoor <${sessionUri}> ;
-  dct:title "Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}" ;
+  dct:title "Agenda ${serialNumber} voor 
+${moment(zittingDate).format('D-M-YYYY')}" ;
   besluitvorming:volgnummer "${serialNumber}" ;
   ext:accepted "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean> .
   agenda:${newUUID} prov:wasRevisionOf <${oldAgendaURI}>  .
@@ -261,7 +262,7 @@ const getAgendaURI = async (newAgendaId) => {
 
    SELECT ?agenda WHERE {
     ?agenda a besluitvorming:Agenda ;
-    mu:uuid "${newAgendaId}" .
+    mu:uuid ${sparqlEscapeString(newAgendaId)} .
    }
  `;
 
@@ -282,7 +283,7 @@ const deleteAgendaitems = async (deleteAgendaURI) => {
   }
   } WHERE {
     GRAPH <${targetGraph}> { 
-    <${deleteAgendaURI}> dct:hasPart ?agendaitem .
+    ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitem .
       ?agendaitem ?p ?o .
       ?s ?pp ?agendaitem .
     }
@@ -343,15 +344,15 @@ const deleteAgenda = async (deleteAgendaURI) => {
 
   DELETE {
     GRAPH <${targetGraph}>  {
-    <${deleteAgendaURI}> ?p ?o .
-    ?s ?pp <${deleteAgendaURI}> .
+    ${sparqlEscapeUri(deleteAgendaURI)} ?p ?o .
+    ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
   }
   } WHERE {
     GRAPH <${targetGraph}> { 
-    <${deleteAgendaURI}> a besluitvorming:Agenda ;
+    ${sparqlEscapeUri(deleteAgendaURI)} a besluitvorming:Agenda ;
       ?p ?o .
       OPTIONAL {
-        ?s ?pp <${deleteAgendaURI}> .
+        ?s ?pp $(sparqlEscapeUri(deleteAgendaURI)) .
       }
     }
   }`;
