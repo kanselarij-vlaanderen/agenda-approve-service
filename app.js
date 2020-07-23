@@ -10,6 +10,12 @@ const repository = require('./repository');
 const util = require('./util');
 const originalQuery = mu.query;
 
+const AGENDA_STATUS_APPROVED = {
+  uri: 'http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1',
+  readable: 'Goedgekeurd',
+};
+
+
 mu.query = function (query, retryCount = 0) {
   let start = moment();
   return originalQuery(query).catch((error) => {
@@ -41,6 +47,20 @@ app.post('/approveAgenda', async (req, res) => {
   await repository.storeAgendaItemNumbers(oldAgendaURI);
 
   res.send({status: ok, statusCode: 200, body: { agendaData: agendaData, newAgenda: { id: newAgendaId, uri: newAgendaURI, data: agendaData } } }); // resultsOfSerialNumbers: resultsAfterUpdates
+});
+
+app.post('/onlyApprove', async (req,res) => {
+  const idOfAgendaToApprove = req.body.idOfAgendaToApprove;
+  if(!idOfAgendaToApprove) {
+    res.send({ status: 400, body: { exception: 'Bad request, idOfAgendaToApprove is null'}});
+  }
+  const uriOfAgendaToApprove = await repository.getAgendaURI(idOfAgendaToApprove);
+  if(!uriOfAgendaToApprove) {
+    res.send({ status: 400, body: { exception: `Not Found, uri of agenda with ID ${idOfAgendaToApprove} was not found in the database`}});
+  }
+
+  await repository.approveAgenda(uriOfAgendaToApprove);
+  res.send({ status: ok, statusCode: 200, body: {idOfAgendaThatIsApproved: idOfAgendaToApprove, agendaStatus: AGENDA_STATUS_APPROVED}});
 });
 
 mu.app.use(mu.errorHandler);
