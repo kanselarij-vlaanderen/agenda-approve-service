@@ -1,11 +1,10 @@
-import mu from 'mu';
-import {
-  sparqlEscapeUri,
-  sparqlEscapeString,
-  uuid as generateUuid,
+import mu, {
   sparqlEscapeDate,
   sparqlEscapeDateTime,
-  sparqlEscapeInt
+  sparqlEscapeInt,
+  sparqlEscapeString,
+  sparqlEscapeUri,
+  uuid as generateUuid
 } from 'mu';
 const moment = require('moment');
 const targetGraph = "http://mu.semte.ch/application";
@@ -171,19 +170,55 @@ const getAgendaURI = async (newAgendaId) => {
 };
 
 const deleteAgendaitems = async (deleteAgendaURI) => {
+  const agendaItemUrisQueryResult = await selectAgendaItems(deleteAgendaURI);
+  const uriList = agendaItemUrisQueryResult.results.bindings;
+  const listOfAgendaItemUris = uriList.map((uri) => { return uri.agendaitem.value});
+
+  for (const agendaItemUri of listOfAgendaItemUris) {
+    await deleteFromAgendaItems(deleteAgendaURI, agendaItemUri);
+    await deleteToAgendaItems(deleteAgendaURI, agendaItemUri);
+  }
+};
+
+const selectAgendaItems = async (deleteAgendaURI) => {
+  const query = `
+  PREFIX dct: <http://purl.org/dc/terms/>
+
+  SELECT * WHERE {
+    GRAPH <${targetGraph}> { 
+    ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitem .
+    }
+  }`;
+  return mu.query(query);
+};
+
+const deleteFromAgendaItems = async (deleteAgendaURI,agendaItemUri) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {
     GRAPH <${targetGraph}>  {
-    ?agendaitem ?p ?o .
-    ?s ?pp ?agendaitem .
+    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
   }
   } WHERE {
     GRAPH <${targetGraph}> { 
-    ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitem .
-      ?agendaitem ?p ?o .
-      ?s ?pp ?agendaitem .
+    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
+    }
+  }`;
+  await mu.query(query);
+};
+
+const deleteToAgendaItems = async (deleteAgendaURI,agendaItemUri) => {
+  const query = `
+  PREFIX dct: <http://purl.org/dc/terms/>
+
+  DELETE {
+    GRAPH <${targetGraph}>  {
+    ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
+  }
+  } WHERE {
+    GRAPH <${targetGraph}> { 
+      ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
     }
   }`;
   await mu.query(query);
