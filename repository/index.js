@@ -169,6 +169,12 @@ const getAgendaURI = async (newAgendaId) => {
   return data.results.bindings[0].agenda.value;
 };
 
+/**
+ * Deletes agendaitems for a specific agenda
+ * @name deleteAgendaitems
+ * @function
+ * @param {String} deleteAgendaURI - The URI of the agenda to delete the agendaitems from
+ */
 const deleteAgendaitems = async (deleteAgendaURI) => {
   const agendaItemUrisQueryResult = await selectAgendaItems(deleteAgendaURI);
   const uriList = agendaItemUrisQueryResult.results.bindings;
@@ -180,6 +186,12 @@ const deleteAgendaitems = async (deleteAgendaURI) => {
   }
 };
 
+/**
+ * Retrieves the agendaItem uris from an agenda
+ * @name selectAgendaItems
+ * @function
+ * @param {String} deleteAgendaURI - The URI of the agenda containing the agendaitem URIs
+ */
 const selectAgendaItems = async (deleteAgendaURI) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
@@ -192,6 +204,14 @@ const selectAgendaItems = async (deleteAgendaURI) => {
   return mu.query(query);
 };
 
+/**
+ * Deletes the relations and its content of an agendaItem.
+ * @description This function will delete all predicates that are going out of the agendaitem.
+ * @name deleteFromAgendaItems
+ * @function
+ * @param {String} deleteAgendaURI - The URI of the agenda
+ * @param {String} agendaItemUri - The URI of the agendaitem which is the startpoint
+ */
 const deleteFromAgendaItems = async (deleteAgendaURI,agendaItemUri) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
@@ -208,6 +228,14 @@ const deleteFromAgendaItems = async (deleteAgendaURI,agendaItemUri) => {
   await mu.query(query);
 };
 
+/**
+ * Deletes the relations and its content pointing to an agendaItem.
+ * @description This function will delete all predicates and data that are pointing towards the agendaItemUri
+ * @name deleteToAgendaItems
+ * @function
+ * @param {String} deleteAgendaURI - The URI of the agenda
+ * @param {String} agendaItemUri - The URI of the agendaitem which is the endpoint
+ */
 const deleteToAgendaItems = async (deleteAgendaURI,agendaItemUri) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
