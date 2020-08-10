@@ -36,7 +36,7 @@ INSERT DATA {
     GRAPH <${targetGraph}> { 
         ${sparqlEscapeUri(newAgendaUri)} a besluitvorming:Agenda ;
             mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
-            dct:created ${sparqlEscapeDate(creationDate)} ;
+            dct:created ${sparqlEscapeDateTime(creationDate)} ;
             dct:modified ${sparqlEscapeDateTime(creationDate)} ;
             dct:title ${sparqlEscapeString(title)} ;
             besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
