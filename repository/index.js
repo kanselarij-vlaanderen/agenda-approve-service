@@ -7,6 +7,8 @@ import mu, {
   uuid as generateUuid
 } from 'mu';
 const moment = require('moment');
+const util = require('../util');
+
 const targetGraph = "http://mu.semte.ch/application";
 
 const AGENDA_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendas/';
@@ -177,12 +179,10 @@ const getAgendaURI = async (newAgendaId) => {
  */
 const deleteAgendaitems = async (deleteAgendaURI) => {
   const agendaItemUrisQueryResult = await selectAgendaItems(deleteAgendaURI);
-  const uriList = agendaItemUrisQueryResult.results.bindings;
-  const listOfAgendaItemUris = uriList.map((uri) => { return uri.agendaitem.value});
+  const listOfAgendaItemUris = agendaItemUrisQueryResult.map((uri) => { return uri.agendaitem});
 
   for (const agendaItemUri of listOfAgendaItemUris) {
-    await deleteFromAgendaItems(deleteAgendaURI, agendaItemUri);
-    await deleteToAgendaItems(deleteAgendaURI, agendaItemUri);
+    await deleteAgendaitem(deleteAgendaURI, agendaItemUri);
   }
 };
 
@@ -201,52 +201,31 @@ const selectAgendaItems = async (deleteAgendaURI) => {
     ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitem .
     }
   }`;
-  return mu.query(query);
+  const result = await mu.query(query);
+  return util.parseSparqlResults(result);
 };
 
 /**
  * Deletes the relations and its content of an agendaItem.
- * @description This function will delete all predicates that are going out of the agendaitem.
- * @name deleteFromAgendaItems
+ * @description This function will delete all predicates that are related to agendaitem.
+ * @name deleteAgendaitem
  * @function
  * @param {String} deleteAgendaURI - The URI of the agenda
- * @param {String} agendaItemUri - The URI of the agendaitem which is the startpoint
+ * @param {String} agendaitemUri - The URI of the agendaitem which is the startpoint
  */
-const deleteFromAgendaItems = async (deleteAgendaURI,agendaItemUri) => {
+const deleteAgendaitem = async (deleteAgendaURI,agendaItemUri) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {
     GRAPH <${targetGraph}>  {
     ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
-  }
-  } WHERE {
-    GRAPH <${targetGraph}> { 
-    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
-    }
-  }`;
-  await mu.query(query);
-};
-
-/**
- * Deletes the relations and its content pointing to an agendaItem.
- * @description This function will delete all predicates and data that are pointing towards the agendaItemUri
- * @name deleteToAgendaItems
- * @function
- * @param {String} deleteAgendaURI - The URI of the agenda
- * @param {String} agendaItemUri - The URI of the agendaitem which is the endpoint
- */
-const deleteToAgendaItems = async (deleteAgendaURI,agendaItemUri) => {
-  const query = `
-  PREFIX dct: <http://purl.org/dc/terms/>
-
-  DELETE {
-    GRAPH <${targetGraph}>  {
     ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
   }
   } WHERE {
     GRAPH <${targetGraph}> { 
-      ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
+    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
+    ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
     }
   }`;
   await mu.query(query);
