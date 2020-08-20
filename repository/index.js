@@ -1,13 +1,14 @@
-import mu from 'mu';
-import {
-  sparqlEscapeUri,
-  sparqlEscapeString,
-  uuid as generateUuid,
+import mu, {
   sparqlEscapeDate,
   sparqlEscapeDateTime,
-  sparqlEscapeInt
+  sparqlEscapeInt,
+  sparqlEscapeString,
+  sparqlEscapeUri,
+  uuid as generateUuid
 } from 'mu';
 const moment = require('moment');
+const util = require('../util');
+
 const targetGraph = "http://mu.semte.ch/application";
 
 const AGENDA_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendas/';
@@ -170,20 +171,61 @@ const getAgendaURI = async (newAgendaId) => {
   return data.results.bindings[0].agenda.value;
 };
 
+/**
+ * Deletes agendaitems for a specific agenda
+ * @name deleteAgendaitems
+ * @function
+ * @param {String} deleteAgendaURI - The URI of the agenda to delete the agendaitems from
+ */
 const deleteAgendaitems = async (deleteAgendaURI) => {
+  const agendaItemUrisQueryResult = await selectAgendaItems(deleteAgendaURI);
+  const listOfAgendaItemUris = agendaItemUrisQueryResult.map((uri) => { return uri.agendaitem});
+
+  for (const agendaItemUri of listOfAgendaItemUris) {
+    await deleteAgendaitem(deleteAgendaURI, agendaItemUri);
+  }
+};
+
+/**
+ * Retrieves the agendaItem uris from an agenda
+ * @name selectAgendaItems
+ * @function
+ * @param {String} deleteAgendaURI - The URI of the agenda containing the agendaitem URIs
+ */
+const selectAgendaItems = async (deleteAgendaURI) => {
+  const query = `
+  PREFIX dct: <http://purl.org/dc/terms/>
+
+  SELECT * WHERE {
+    GRAPH <${targetGraph}> { 
+    ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitem .
+    }
+  }`;
+  const result = await mu.query(query);
+  return util.parseSparqlResults(result);
+};
+
+/**
+ * Deletes the relations and its content of an agendaItem.
+ * @description This function will delete all predicates that are related to agendaitem.
+ * @name deleteAgendaitem
+ * @function
+ * @param {String} deleteAgendaURI - The URI of the agenda
+ * @param {String} agendaitemUri - The URI of the agendaitem which is the startpoint
+ */
+const deleteAgendaitem = async (deleteAgendaURI,agendaItemUri) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {
     GRAPH <${targetGraph}>  {
-    ?agendaitem ?p ?o .
-    ?s ?pp ?agendaitem .
+    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
+    ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
   }
   } WHERE {
     GRAPH <${targetGraph}> { 
-    ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitem .
-      ?agendaitem ?p ?o .
-      ?s ?pp ?agendaitem .
+    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
+    ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
     }
   }`;
   await mu.query(query);

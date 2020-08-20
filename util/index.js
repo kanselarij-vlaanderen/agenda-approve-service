@@ -131,5 +131,6 @@ const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
 
 module.exports = {
   updatePropertiesOnAgendaItems,
-  copyAgendaItems
+  copyAgendaItems,
+  parseSparqlResults
 };
