@@ -36,13 +36,17 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     return;
   }
 
+
   let targetsToDo = [];
   if (targets.length > batchSize) {
     console.log(`Agendaitems list exceeds the batchSize of ${batchSize}, splitting into batches`);
     targetsToDo = targets.splice(0, batchSize);
   }
+  const ignoredPropertiesLeft = [
+    'http://mu.semte.ch/vocabularies/core/uuid',
+    'http://www.w3.org/ns/prov#wasRevisionOf'
+  ];
   const movePropertiesLeft = `
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
   INSERT { 
@@ -55,13 +59,15 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     }
     ?target prov:wasRevisionOf ?previousURI .
     ?previousURI ?p ?o .
-    FILTER(?p != mu:uuid)
+    FILTER(?p NOT IN (${ignoredPropertiesLeft.map(sparqlEscapeUri).join(', ')}))
   }`;
   await mu.update(movePropertiesLeft);
 
+  const ignoredPropertiesRight = [
+    'http://purl.org/dc/terms/hasPart',
+    'http://www.w3.org/ns/prov#wasRevisionOf'
+  ];
   const movePropertiesRight = `
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
   INSERT { 
@@ -74,7 +80,7 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     }
     ?target prov:wasRevisionOf ?previousURI .
     ?o ?p ?previousURI .
-    FILTER(?p != dct:hasPart)
+    FILTER(?p NOT IN (${ignoredPropertiesRight.map(sparqlEscapeUri).join(', ')}))
   }`;
   await mu.update(movePropertiesRight);
 
