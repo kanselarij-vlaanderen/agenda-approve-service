@@ -20,7 +20,7 @@ PREFIX dct: <http://purl.org/dc/terms/>
 
 SELECT DISTINCT ?target WHERE {
     ${sparqlEscapeUri(agendaUri)} dct:hasPart ?target .
-    ?target ext:replacesPrevious ?previousURI .
+    ?target prov:wasRevisionOf ?previousURI .
 }  
   `;
   const data = await mu.query(selectTargets);
@@ -53,7 +53,7 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     VALUES (?target) {
       (<${targets.join(">) (<")}>)
     }
-    ?target ext:replacesPrevious ?previousURI .
+    ?target prov:wasRevisionOf ?previousURI .
     ?previousURI ?p ?o .
     FILTER(?p != mu:uuid)
   }`;
@@ -72,7 +72,7 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     VALUES (?target) {
       (<${targets.join(">) (<")}>)
     }
-    ?target ext:replacesPrevious ?previousURI .
+    ?target prov:wasRevisionOf ?previousURI .
     ?o ?p ?previousURI .
     FILTER(?p != dct:hasPart)
   }`;
@@ -108,7 +108,7 @@ const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
     GRAPH <${targetGraph}> {
         ?newAgendaitemURI a besluit:Agendapunt ;
         mu:uuid ?newAgendaitemUuid ;
-        ext:replacesPrevious ?agendaitem .
+        prov:wasRevisionOf ?agendaitem .
       <${newAgendaUri}> dct:hasPart ?newAgendaitemURI .
     }
   } WHERE { { SELECT * WHERE {
