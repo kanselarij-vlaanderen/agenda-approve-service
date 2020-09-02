@@ -15,8 +15,9 @@ function getBindingValue(binding, property, fallback) {
 
 const updatePropertiesOnAgendaItems = async function (agendaUri) {
   const selectTargets = `
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX dct: <http://purl.org/dc/terms/>
+
 SELECT DISTINCT ?target WHERE {
     ${sparqlEscapeUri(agendaUri)} dct:hasPart ?target .
     ?target ext:replacesPrevious ?previousURI .
@@ -41,11 +42,8 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     targetsToDo = targets.splice(0, batchSize);
   }
   const movePropertiesLeft = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+  PREFIX prov: <http://www.w3.org/ns/prov#>
 
   INSERT { 
     GRAPH <${targetGraph}> {
@@ -62,11 +60,9 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
   await mu.update(movePropertiesLeft);
 
   const movePropertiesRight = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+  PREFIX prov: <http://www.w3.org/ns/prov#>
 
   INSERT { 
     GRAPH <${targetGraph}> {
@@ -105,7 +101,7 @@ const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX prov: <http://www.w3.org/ns/prov#>
   PREFIX dct: <http://purl.org/dc/terms/>
 
   INSERT { 
