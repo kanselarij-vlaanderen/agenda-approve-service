@@ -1,8 +1,10 @@
+import mu from 'mu';
+import { sparqlEscapeUri, sparqlEscapeDateTime, uuid as generateUuid, sparqlEscapeString } from 'mu';
 const repository = require('./../repository/index.js');
 const targetGraph = "http://mu.semte.ch/application";
 const batchSize = process.env.BATCH_SIZE || 100;
-import mu from 'mu';
-import { sparqlEscapeUri } from 'mu';
+
+const AGENDA_ITEM_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendapunten/';
 
 function getBindingValue(binding, property, fallback) {
   binding = binding || {};
@@ -44,7 +46,8 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
   }
   const ignoredPropertiesLeft = [
     'http://mu.semte.ch/vocabularies/core/uuid',
-    'http://www.w3.org/ns/prov#wasRevisionOf'
+    'http://www.w3.org/ns/prov#wasRevisionOf',
+    'http://data.vlaanderen.be/ns/besluitvorming#aanmaakdatum' // TODO: not part of besluitvorming namespace
   ];
   const movePropertiesLeft = `
   PREFIX prov: <http://www.w3.org/ns/prov#>
@@ -101,8 +104,9 @@ const parseSparqlResults = (data) => {
 };
 
 const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
-  // The bind of ?uuid is a workaround to get a unique id for each STRUUID call.
-  // SUBQUERY: Is needed to make sure we have the same UUID for the URI, since using ?uuid generated a new one
+  const uuid = generateUuid();
+  const uri = AGENDA_ITEM_RESOURCE_BASE + uuid;
+  const creationDate = new Date();
   const createNewUris = `
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
@@ -111,22 +115,15 @@ const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
   PREFIX dct: <http://purl.org/dc/terms/>
 
   INSERT { 
-    GRAPH <${targetGraph}> {
-        ?newAgendaitemURI a besluit:Agendapunt ;
-        mu:uuid ?newAgendaitemUuid ;
-        prov:wasRevisionOf ?agendaitem .
-      <${newAgendaUri}> dct:hasPart ?newAgendaitemURI .
-    }
-  } WHERE { { SELECT * WHERE {
-    <${oldAgendaUri}> dct:hasPart ?agendaitem .
-
-    OPTIONAL { ?agendaitem mu:uuid ?olduuid . } 
-    BIND(IF(BOUND(?olduuid), STRUUID(), STRUUID()) as ?uuid)
-    BIND(IRI(CONCAT("http://kanselarij.vo.data.gift/id/agendapunten/", ?uuid)) AS ?newAgendaitemURI)
-    } }
-    BIND(STRAFTER(STR(?newAgendaitemURI), "http://kanselarij.vo.data.gift/id/agendapunten/") AS ?newAgendaitemUuid) 
+    ${sparqlEscapeUri(uri)} a besluit:Agendapunt ;
+      mu:uuid ${sparqlEscapeString(uuid)} ;
+      besluitvorming:aanmaakdatum ${sparqlEscapeDateTime(creationDate)} ;
+      prov:wasRevisionOf ?agendaitem .
+    ${sparqlEscapeUri(newAgendaUri)} dct:hasPart ${sparqlEscapeUri(uri)} .
+  } WHERE {
+    ${sparqlEscapeUri(oldAgendaUri)} dct:hasPart ?agendaitem .
   }`;
-
+  // TODO: "aanmaakdatum" not part of besluitvorming namespace
   const result = await mu.update(createNewUris);
   return updatePropertiesOnAgendaItems(newAgendaUri);
 };
