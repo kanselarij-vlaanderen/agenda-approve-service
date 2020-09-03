@@ -32,6 +32,7 @@ PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
 
 INSERT DATA {
     GRAPH <${targetGraph}> { 
@@ -251,7 +252,7 @@ const deleteAgendaActivities = async (deleteAgendaURI) => {
  WHERE {
     GRAPH <${targetGraph}> {
 
-    ?subcase a dbpedia:UnitOfWork .
+    ?subcase a dossier:Procedurestap .
     OPTIONAL { ?subcase besluitvorming:isAangevraagdVoor ?session .}
     OPTIONAL { 
       ?activity besluitvorming:genereertAgendapunt ?agendapunt .
@@ -265,7 +266,7 @@ const deleteAgendaActivities = async (deleteAgendaURI) => {
           GRAPH <${targetGraph}> {
             ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitems .
 
-            ?subcase a dbpedia:UnitOfWork . 
+            ?subcase a dossier:Procedurestap . 
             ?activity a besluitvorming:Agendering .
             ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
             ?activity besluitvorming:genereertAgendapunt ?agendaitems . 
