@@ -22,7 +22,7 @@ app.post('/approveAgenda', async (req, res) => {
   // Copy old agenda data to new agenda.
   const agendaData = await agendaApproval.copyAgendaItems(oldAgendaURI, newAgendaURI);
   await agendaApproval.approveAgenda(oldAgendaURI);
-  await agendaApproval.storeAgendaItemNumbers(oldAgendaURI);
+  await agendaApproval.storeAgendaItemNumbers(oldAgendaURI); // TODO: document what this is for. Otherwise remove.
 
   res.send({status: ok, statusCode: 200, body: { agendaData: agendaData, newAgenda: { id: newAgendaId, uri: newAgendaURI, data: agendaData } } }); // resultsOfSerialNumbers: resultsAfterUpdates
 });
