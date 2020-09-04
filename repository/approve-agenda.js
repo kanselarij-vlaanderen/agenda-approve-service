@@ -231,7 +231,6 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
 const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
   const agendaItemUris = (await selectAgendaItems(oldAgendaUri)).map(res => res.agendaitem);
 
-  const newVerUris = [];
   for (const oldVerUri of agendaItemUris) {
     const uuid = generateUuid();
     const newVerUri = AGENDA_ITEM_RESOURCE_BASE + uuid;
@@ -252,9 +251,8 @@ INSERT DATA {
 }`;
     // TODO: "aanmaakdatum" not part of besluitvorming namespace
     await mu.update(createNewVer);
-    newVerUris.push(newVerUri);
   }
-  return updatePropertiesOnAgendaItems(newVerUris);
+  return updatePropertiesOnAgendaItems(newAgendaUri);
 };
 
 export {
