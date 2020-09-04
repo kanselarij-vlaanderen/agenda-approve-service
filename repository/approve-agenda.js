@@ -196,7 +196,7 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     }
   } WHERE {
     VALUES (?target) {
-      (${targets.map(sparqlEscapeUri).join(') (\n      ')})
+      (${targets.map(sparqlEscapeUri).join(')\n      (')})
     }
     ?target prov:wasRevisionOf ?previousURI .
     ?previousURI ?p ?o .
@@ -217,7 +217,7 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     }
   } WHERE {
     VALUES (?target) {
-      (${targets.map(sparqlEscapeUri).join(') (\n      ')})
+      (${targets.map(sparqlEscapeUri).join(')\n      (')})
     }
     ?target prov:wasRevisionOf ?previousURI .
     ?o ?p ?previousURI .
