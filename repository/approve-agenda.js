@@ -45,7 +45,7 @@ INSERT DATA {
             prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
     }
 }`;
-  await mu.query(query).catch(err => {
+  await mu.update(query).catch(err => {
     console.error(err);
   });
   return [newAgendaUuid, newAgendaUri];
@@ -65,7 +65,7 @@ const approveAgenda = async (agendaURI) => {
       ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_APPROVED)} .
     }
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 const zittingInfo = async (zittingUuid) => {
