@@ -1,71 +1,49 @@
-// VIRTUOSO bug: https://github.com/openlink/virtuoso-opensource/issues/515
-import mu from 'mu';
+import { app, errorHandler } from 'mu';
 import { ok } from 'assert';
-import cors from 'cors';
+import bodyParser from 'body-parser';
 
-const app = mu.app;
-const moment = require('moment');
-const bodyParser = require('body-parser');
-const repository = require('./repository');
-const util = require('./util');
-const originalQuery = mu.query;
+import { getAgendaURI } from './repository/agenda-general';
+import * as agendaApproval from './repository/approve-agenda';
+import * as agendaDeletion from './repository/delete-agenda';
 
 const AGENDA_STATUS_APPROVED = {
   uri: 'http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1',
   readable: 'Goedgekeurd',
 };
 
-
-mu.query = function (query, retryCount = 0) {
-  let start = moment();
-  return originalQuery(query).catch((error) => {
-    if (retryCount < 3) {
-      console.log(`error during query ${query}: ${error}`);
-      return mu.query(query, retryCount + 1);
-    }
-    console.log(`final error during query ${query}: ${error}`);
-    throw error;
-  }).then((result) => {
-    console.log(`query took: ${moment().diff(start, 'seconds', true).toFixed(3)}s`);
-    return result;
-  });
-};
-mu.update = mu.query;
-
-app.use(cors());
 app.use(bodyParser.json({ type: 'application/*+json' }));
 
 // Approve agenda route
 app.post('/approveAgenda', async (req, res) => {
   const oldAgendaId = req.body.oldAgendaId;
-  const oldAgendaURI = await repository.getAgendaURI(oldAgendaId);
+  const oldAgendaURI = await getAgendaURI(oldAgendaId);
   // Create new agenda via query.
-  const [newAgendaId, newAgendaURI] = await repository.createNewAgenda(req, res, oldAgendaURI);
+  const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(req, res, oldAgendaURI);
   // Copy old agenda data to new agenda.
-  const agendaData = await util.copyAgendaItems(oldAgendaURI, newAgendaURI);
-  await repository.approveAgenda(oldAgendaURI);
-  await repository.storeAgendaItemNumbers(oldAgendaURI);
+  const agendaData = await agendaApproval.copyAgendaItems(oldAgendaURI, newAgendaURI);
+  await agendaApproval.approveAgenda(oldAgendaURI);
+  await agendaApproval.storeAgendaItemNumbers(oldAgendaURI);
 
   res.send({status: ok, statusCode: 200, body: { agendaData: agendaData, newAgenda: { id: newAgendaId, uri: newAgendaURI, data: agendaData } } }); // resultsOfSerialNumbers: resultsAfterUpdates
 });
 
+// TODO: The functionality of this route can be replaced by a resources-call. Refactor out.
 app.post('/onlyApprove', async (req,res) => {
   const idOfAgendaToApprove = req.body.idOfAgendaToApprove;
   if(!idOfAgendaToApprove) {
     res.send({ status: 400, body: { exception: 'Bad request, idOfAgendaToApprove is null'}});
   }
-  const uriOfAgendaToApprove = await repository.getAgendaURI(idOfAgendaToApprove);
+  const uriOfAgendaToApprove = await getAgendaURI(idOfAgendaToApprove);
   if(!uriOfAgendaToApprove) {
     res.send({ status: 400, body: { exception: `Not Found, uri of agenda with ID ${idOfAgendaToApprove} was not found in the database`}});
   }
 
-  await repository.approveAgenda(uriOfAgendaToApprove);
+  await agendaApproval.approveAgenda(uriOfAgendaToApprove);
   res.send({ status: ok, statusCode: 200, body: {idOfAgendaThatIsApproved: idOfAgendaToApprove, agendaStatus: AGENDA_STATUS_APPROVED}});
 });
 
-mu.app.use(mu.errorHandler);
+app.use(errorHandler);
 
-// Approve agenda route
 app.post('/deleteAgenda', async (req, res) => {
   const agendaToDeleteId = req.body.agendaToDeleteId;
   if(!agendaToDeleteId){
@@ -73,10 +51,10 @@ app.post('/deleteAgenda', async (req, res) => {
     return;
   }
   try {
-    const agendaToDeleteURI = await repository.getAgendaURI(agendaToDeleteId);
-    await repository.deleteAgendaActivities(agendaToDeleteURI);
-    await repository.deleteAgendaitems(agendaToDeleteURI);
-    await repository.deleteAgenda(agendaToDeleteURI);
+    const agendaToDeleteURI = await getAgendaURI(agendaToDeleteId);
+    await agendaDeletion.deleteAgendaActivities(agendaToDeleteURI);
+    await agendaDeletion.deleteAgendaitems(agendaToDeleteURI);
+    await agendaDeletion.deleteAgenda(agendaToDeleteURI);
     res.send({status: ok, statusCode: 200 });
   } catch (e) {
     console.log(e);
