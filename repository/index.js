@@ -241,7 +241,7 @@ const deleteAgendaActivities = async (deleteAgendaURI) => {
 
   DELETE {
     GRAPH <${targetGraph}> {
-    ?subcase besluitvorming:isAangevraagdVoor ?session .
+    ?subcase ext:isAangevraagdVoor ?session .
     ?activity a besluitvorming:Agendering .
     ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
     ?activity besluitvorming:genereertAgendapunt ?agendapunt . 
@@ -253,7 +253,7 @@ const deleteAgendaActivities = async (deleteAgendaURI) => {
     GRAPH <${targetGraph}> {
 
     ?subcase a dossier:Procedurestap .
-    OPTIONAL { ?subcase besluitvorming:isAangevraagdVoor ?session .}
+    OPTIONAL { ?subcase ext:isAangevraagdVoor ?session .}
     OPTIONAL { 
       ?activity besluitvorming:genereertAgendapunt ?agendapunt .
       ?activity a besluitvorming:Agendering .
