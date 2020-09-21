@@ -237,7 +237,7 @@ const deleteAgendaActivities = async (deleteAgendaURI) => {
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
+  PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
 
   DELETE {
     GRAPH <${targetGraph}> {
