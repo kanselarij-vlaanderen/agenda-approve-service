@@ -1,21 +1,20 @@
 import mu, {
-  sparqlEscapeDate,
   sparqlEscapeDateTime,
   sparqlEscapeInt,
   sparqlEscapeString,
   sparqlEscapeUri,
   uuid as generateUuid
 } from 'mu';
-const moment = require('moment');
-const util = require('../util');
+import moment from 'moment';
+import { selectAgendaItems } from './agenda-general';
 
-const targetGraph = "http://mu.semte.ch/application";
+const targetGraph = 'http://mu.semte.ch/application';
+const batchSize = process.env.BATCH_SIZE || 100;
 
 const AGENDA_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendas/';
+const AGENDA_ITEM_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendapunten/';
 const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
 const AGENDA_STATUS_APPROVED = 'http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1';
-
-const SUBCASE_PHASE_RESOURCE_BASE = 'http://data.vlaanderen.be/id/ProcedurestapFase/';
 
 const createNewAgenda = async (req, res, oldAgendaURI) => {
   const newAgendaUuid = generateUuid();
@@ -47,12 +46,13 @@ INSERT DATA {
             prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
     }
 }`;
-  await mu.query(query).catch(err => {
+  await mu.update(query).catch(err => {
     console.error(err);
   });
   return [newAgendaUuid, newAgendaUri];
 };
 
+// TODO: This query can be handled by a resource api-call. Refactor out.
 const approveAgenda = async (agendaURI) => {
   const query = `
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -66,7 +66,7 @@ const approveAgenda = async (agendaURI) => {
       ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_APPROVED)} .
     }
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 const zittingInfo = async (zittingUuid) => {
@@ -152,163 +152,113 @@ SELECT (MAX(?number) as ?max) WHERE {
     ?agendaItem ext:agendaItemNumber ?number .
 }`;
   const response = await mu.query(query);
-  return parseInt(((response.results.bindings[0] || {})['max'] || {}).value || 0);
+  return parseInt(((response.results.bindings[0] || {}).max || {}).value || 0);
 };
 
-const getAgendaURI = async (newAgendaId) => {
-  const query = `
-   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+const updatePropertiesOnAgendaItems = async function (agendaUri) {
+  const selectTargets = `
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dct: <http://purl.org/dc/terms/>
 
-   SELECT ?agenda WHERE {
-    ?agenda a besluitvorming:Agenda ;
-      mu:uuid ${sparqlEscapeString(newAgendaId)} .
-   }
- `;
-
-  const data = await mu.query(query).catch(err => {
-    console.error(err);
-  });
-  return data.results.bindings[0].agenda.value;
-};
-
-/**
- * Deletes agendaitems for a specific agenda
- * @name deleteAgendaitems
- * @function
- * @param {String} deleteAgendaURI - The URI of the agenda to delete the agendaitems from
- */
-const deleteAgendaitems = async (deleteAgendaURI) => {
-  const agendaItemUrisQueryResult = await selectAgendaItems(deleteAgendaURI);
-  const listOfAgendaItemUris = agendaItemUrisQueryResult.map((uri) => { return uri.agendaitem});
-
-  for (const agendaItemUri of listOfAgendaItemUris) {
-    await deleteAgendaitem(deleteAgendaURI, agendaItemUri);
-  }
-};
-
-/**
- * Retrieves the agendaItem uris from an agenda
- * @name selectAgendaItems
- * @function
- * @param {String} deleteAgendaURI - The URI of the agenda containing the agendaitem URIs
- */
-const selectAgendaItems = async (deleteAgendaURI) => {
-  const query = `
-  PREFIX dct: <http://purl.org/dc/terms/>
-
-  SELECT * WHERE {
-    GRAPH <${targetGraph}> { 
-    ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitem .
-    }
-  }`;
-  const result = await mu.query(query);
-  return util.parseSparqlResults(result);
-};
-
-/**
- * Deletes the relations and its content of an agendaItem.
- * @description This function will delete all predicates that are related to agendaitem.
- * @name deleteAgendaitem
- * @function
- * @param {String} deleteAgendaURI - The URI of the agenda
- * @param {String} agendaitemUri - The URI of the agendaitem which is the startpoint
- */
-const deleteAgendaitem = async (deleteAgendaURI,agendaItemUri) => {
-  const query = `
-  PREFIX dct: <http://purl.org/dc/terms/>
-
-  DELETE {
-    GRAPH <${targetGraph}>  {
-    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
-    ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
-  }
-  } WHERE {
-    GRAPH <${targetGraph}> { 
-    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
-    ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
-    }
-  }`;
-  await mu.query(query);
-};
-
-const deleteAgendaActivities = async (deleteAgendaURI) => {
-  const query = `
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
-
-  DELETE {
-    GRAPH <${targetGraph}> {
-    ?subcase ext:isAangevraagdVoor ?session .
-    ?activity a besluitvorming:Agendering .
-    ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
-    ?activity besluitvorming:genereertAgendapunt ?agendapunt . 
-    ?activity ?p ?o .
-    }
-  }
-  
- WHERE {
-    GRAPH <${targetGraph}> {
-
-    ?subcase a dossier:Procedurestap .
-    OPTIONAL { ?subcase ext:isAangevraagdVoor ?session .}
-    OPTIONAL { 
-      ?activity besluitvorming:genereertAgendapunt ?agendapunt .
-      ?activity a besluitvorming:Agendering .
-      ?activity ?p ?o . 
-    }
-    
-      FILTER (?totalitems = 1)  {
-
-        SELECT (count(*) AS ?totalitems) ?subcase ?activity WHERE {
-          GRAPH <${targetGraph}> {
-            ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitems .
-
-            ?subcase a dossier:Procedurestap . 
-            ?activity a besluitvorming:Agendering .
-            ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
-            ?activity besluitvorming:genereertAgendapunt ?agendaitems . 
-            ?activity besluitvorming:genereertAgendapunt ?totalitems . 
-          }
-        }
-        GROUP BY ?subcase ?activity
-      }
-       
-    }
-  }
+SELECT DISTINCT ?target WHERE {
+    ${sparqlEscapeUri(agendaUri)} dct:hasPart ?target .
+    ?target prov:wasRevisionOf ?previousURI .
+}  
   `;
-  await mu.query(query);
+  const data = await mu.query(selectTargets);
+  const targets = data.results.bindings.map((binding) => {
+    return binding.target.value;
+  });
+  return updatePropertiesOnAgendaItemsBatched(targets);
 };
 
-const deleteAgenda = async (deleteAgendaURI) => {
-  const query = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-
-  DELETE {
-    GRAPH <${targetGraph}>  {
-    ${sparqlEscapeUri(deleteAgendaURI)} ?p ?o .
-    ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
+const updatePropertiesOnAgendaItemsBatched = async function (targets) {
+  if (!targets || targets.length === 0) {
+    console.log('all done updating properties of agendaitems');
+    return;
   }
-  } WHERE {
-    GRAPH <${targetGraph}> { 
-    ${sparqlEscapeUri(deleteAgendaURI)} a besluitvorming:Agenda ;
-      ?p ?o .
-      OPTIONAL {
-        ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
-      }
+
+  let targetsToDo = [];
+  if (targets.length > batchSize) {
+    console.log(`Agendaitems list exceeds the batchSize of ${batchSize}, splitting into batches`);
+    targetsToDo = targets.splice(0, batchSize);
+  }
+  const ignoredPropertiesLeft = [
+    'http://mu.semte.ch/vocabularies/core/uuid',
+    'http://www.w3.org/ns/prov#wasRevisionOf',
+    'http://data.vlaanderen.be/ns/besluitvorming#aanmaakdatum' // TODO: not part of besluitvorming namespace
+  ];
+  const movePropertiesLeft = `
+  PREFIX prov: <http://www.w3.org/ns/prov#>
+
+  INSERT { 
+    GRAPH <${targetGraph}> {
+      ?target ?p ?o .
     }
+  } WHERE {
+    VALUES (?target) {
+      (${targets.map(sparqlEscapeUri).join(')\n      (')})
+    }
+    ?target prov:wasRevisionOf ?previousURI .
+    ?previousURI ?p ?o .
+    FILTER(?p NOT IN (${ignoredPropertiesLeft.map(sparqlEscapeUri).join(', ')}))
   }`;
-  await mu.query(query);
+  await mu.update(movePropertiesLeft);
+
+  const ignoredPropertiesRight = [
+    'http://purl.org/dc/terms/hasPart',
+    'http://www.w3.org/ns/prov#wasRevisionOf'
+  ];
+  const movePropertiesRight = `
+  PREFIX prov: <http://www.w3.org/ns/prov#>
+
+  INSERT { 
+    GRAPH <${targetGraph}> {
+      ?o ?p ?target .
+    }
+  } WHERE {
+    VALUES (?target) {
+      (${targets.map(sparqlEscapeUri).join(')\n      (')})
+    }
+    ?target prov:wasRevisionOf ?previousURI .
+    ?o ?p ?previousURI .
+    FILTER(?p NOT IN (${ignoredPropertiesRight.map(sparqlEscapeUri).join(', ')}))
+  }`;
+  await mu.update(movePropertiesRight);
+
+  return updatePropertiesOnAgendaItemsBatched(targetsToDo);
 };
 
-module.exports = {
+const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
+  const agendaItemUris = (await selectAgendaItems(oldAgendaUri)).map(res => res.agendaitem);
+
+  for (const oldVerUri of agendaItemUris) {
+    const uuid = generateUuid();
+    const newVerUri = AGENDA_ITEM_RESOURCE_BASE + uuid;
+    const creationDate = new Date();
+    const createNewVer = `
+PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dct: <http://purl.org/dc/terms/>
+
+INSERT DATA { 
+    ${sparqlEscapeUri(newVerUri)} a besluit:Agendapunt ;
+        mu:uuid ${sparqlEscapeString(uuid)} ;
+        besluitvorming:aanmaakdatum ${sparqlEscapeDateTime(creationDate)} ;
+        prov:wasRevisionOf ${sparqlEscapeUri(oldVerUri)} .
+    ${sparqlEscapeUri(newAgendaUri)} dct:hasPart ${sparqlEscapeUri(newVerUri)} .
+}`;
+    // TODO: "aanmaakdatum" not part of besluitvorming namespace
+    await mu.update(createNewVer);
+  }
+  return updatePropertiesOnAgendaItems(newAgendaUri);
+};
+
+export {
   createNewAgenda,
+  approveAgenda,
   storeAgendaItemNumbers,
-  getAgendaURI,
-  deleteAgendaActivities,
-  deleteAgendaitems,
-  deleteAgenda,
-  approveAgenda
+  copyAgendaItems
 };
