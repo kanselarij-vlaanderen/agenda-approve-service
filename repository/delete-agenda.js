@@ -49,11 +49,11 @@ const deleteAgendaActivities = async (deleteAgendaURI) => {
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX dbpedia: <http://dbpedia.org/ontology/>
+  PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
 
   DELETE {
     GRAPH <${targetGraph}> {
-    ?subcase besluitvorming:isAangevraagdVoor ?session .
+    ?subcase ext:isAangevraagdVoor ?session .
     ?activity a besluitvorming:Agendering .
     ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
     ?activity besluitvorming:genereertAgendapunt ?agendapunt . 
@@ -64,8 +64,8 @@ const deleteAgendaActivities = async (deleteAgendaURI) => {
  WHERE {
     GRAPH <${targetGraph}> {
 
-    ?subcase a dbpedia:UnitOfWork .
-    OPTIONAL { ?subcase besluitvorming:isAangevraagdVoor ?session .}
+    ?subcase a dossier:Procedurestap .
+    OPTIONAL { ?subcase ext:isAangevraagdVoor ?session .}
     OPTIONAL { 
       ?activity besluitvorming:genereertAgendapunt ?agendapunt .
       ?activity a besluitvorming:Agendering .
@@ -78,7 +78,7 @@ const deleteAgendaActivities = async (deleteAgendaURI) => {
           GRAPH <${targetGraph}> {
             ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitems .
 
-            ?subcase a dbpedia:UnitOfWork . 
+            ?subcase a dossier:Procedurestap . 
             ?activity a besluitvorming:Agendering .
             ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
             ?activity besluitvorming:genereertAgendapunt ?agendaitems . 
