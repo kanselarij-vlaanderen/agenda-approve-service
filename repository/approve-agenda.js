@@ -6,7 +6,7 @@ import mu, {
   uuid as generateUuid
 } from 'mu';
 import moment from 'moment';
-import { selectAgendaItems } from './agenda-general';
+import { selectAgendaItems, selectAgendaitemNotFormallyOk } from './agenda-general';
 
 const targetGraph = 'http://mu.semte.ch/application';
 const batchSize = process.env.BATCH_SIZE || 100;
@@ -256,9 +256,62 @@ INSERT DATA {
   return updatePropertiesOnAgendaItems(newAgendaUri);
 };
 
+const rollbackAgendaitems = async (oldAgendaUri) => {
+  const agendaitemUris = (await selectAgendaitemNotFormallyOk(oldAgendaUri)).map(res => res.agendaitem);
+
+  for (const oldVerUri of agendaitemUris) {
+    const rollbackDeleteQuery = `
+PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+DELETE {
+  ${sparqlEscapeUri(oldVerUri)} ?p ?rightTarget .
+  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
+} WHERE {
+  ${sparqlEscapeUri(oldVerUri)} a besluit:Agendapunt ;
+  ?p ?rightTarget .
+  FILTER(?p NOT IN (rdf:type, mu:uuid, prov:wasRevisionOf) )
+
+  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
+  FILTER(?pp NOT IN (dct:hasPart, besluitvorming:genereertAgendapunt, prov:wasRevisionOf ))
+}
+`;
+
+    const rollbackInsertQuery = `
+PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+INSERT {
+  ${sparqlEscapeUri(oldVerUri)} ?p ?rightTarget .
+  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
+} WHERE {
+  ${sparqlEscapeUri(oldVerUri)} a besluit:Agendapunt ;
+  prov:wasRevisionOf ?previousAgendaitem .
+  ?previousAgendaitem ?p ?rightTarget .
+  FILTER(?p NOT IN (rdf:type, mu:uuid, prov:wasRevisionOf) )
+
+  ?leftTarget ?pp ?previousAgendaitem .
+  FILTER(?pp NOT IN (dct:hasPart, besluitvorming:genereertAgendapunt, prov:wasRevisionOf ))
+}
+`;
+    await mu.update(rollbackDeleteQuery);
+    await mu.update(rollbackInsertQuery);
+  }
+  return;
+};
+
 export {
   createNewAgenda,
   approveAgenda,
   storeAgendaItemNumbers,
-  copyAgendaItems
+  copyAgendaItems,
+  rollbackAgendaitems,
 };

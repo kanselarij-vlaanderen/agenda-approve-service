@@ -27,6 +27,15 @@ app.post('/approveAgenda', async (req, res) => {
   res.send({status: ok, statusCode: 200, body: { agendaData: agendaData, newAgenda: { id: newAgendaId, uri: newAgendaURI, data: agendaData } } }); // resultsOfSerialNumbers: resultsAfterUpdates
 });
 
+// Rollback formally not ok agendaitems route
+app.post('/rollbackAgendaitemsNotFormallyOk', async (req, res) => {
+  const oldAgendaId = req.body.oldAgendaId;
+  const oldAgendaURI = await getAgendaURI(oldAgendaId);
+  // Rollback agendaitems that were not approvable on the agenda.
+ await agendaApproval.rollbackAgendaitems(oldAgendaURI);
+  res.send({status: ok, statusCode: 200 });
+});
+
 // TODO: The functionality of this route can be replaced by a resources-call. Refactor out.
 app.post('/onlyApprove', async (req,res) => {
   const idOfAgendaToApprove = req.body.idOfAgendaToApprove;
