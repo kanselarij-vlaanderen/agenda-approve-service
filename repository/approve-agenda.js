@@ -14,7 +14,6 @@ const batchSize = process.env.BATCH_SIZE || 100;
 const AGENDA_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendas/';
 const AGENDA_ITEM_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendapunten/';
 const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
-const AGENDA_STATUS_APPROVED = 'http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1';
 
 const createNewAgenda = async (req, res, oldAgendaURI) => {
   const newAgendaUuid = generateUuid();
@@ -50,23 +49,6 @@ INSERT DATA {
     console.error(err);
   });
   return [newAgendaUuid, newAgendaUri];
-};
-
-// TODO: This query can be handled by a resource api-call. Refactor out.
-const approveAgenda = async (agendaURI) => {
-  const query = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  DELETE DATA {
-    GRAPH <${targetGraph}> {
-      ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} .
-    }
-  };
-  INSERT DATA {
-    GRAPH <${targetGraph}> {
-      ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_APPROVED)} .
-    }
-  }`;
-  await mu.update(query);
 };
 
 const zittingInfo = async (zittingUuid) => {
@@ -267,6 +249,7 @@ PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX dct: <http://purl.org/dc/terms/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 
 DELETE {
   ${sparqlEscapeUri(oldVerUri)} ?p ?rightTarget .
@@ -274,7 +257,7 @@ DELETE {
 } WHERE {
   ${sparqlEscapeUri(oldVerUri)} a besluit:Agendapunt ;
   ?p ?rightTarget .
-  FILTER(?p NOT IN (rdf:type, mu:uuid, prov:wasRevisionOf) )
+  FILTER(?p NOT IN (rdf:type, mu:uuid, prov:wasRevisionOf, ext:prioriteit) )
 
   ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
   FILTER(?pp NOT IN (dct:hasPart, besluitvorming:genereertAgendapunt, prov:wasRevisionOf ))
@@ -310,7 +293,6 @@ INSERT {
 
 export {
   createNewAgenda,
-  approveAgenda,
   storeAgendaItemNumbers,
   copyAgendaItems,
   rollbackAgendaitems,
