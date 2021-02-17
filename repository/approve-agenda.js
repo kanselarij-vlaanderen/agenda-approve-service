@@ -6,7 +6,7 @@ import mu, {
   uuid as generateUuid
 } from 'mu';
 import moment from 'moment';
-import { selectAgendaItems } from './agenda-general';
+import { selectAgendaItems, selectAgendaitemNotFormallyOk } from './agenda-general';
 
 const targetGraph = 'http://mu.semte.ch/application';
 const batchSize = process.env.BATCH_SIZE || 100;
@@ -14,7 +14,6 @@ const batchSize = process.env.BATCH_SIZE || 100;
 const AGENDA_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendas/';
 const AGENDA_ITEM_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendapunten/';
 const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
-const AGENDA_STATUS_APPROVED = 'http://kanselarij.vo.data.gift/id/agendastatus/ff0539e6-3e63-450b-a9b7-cc6463a0d3d1';
 
 const createNewAgenda = async (req, res, oldAgendaURI) => {
   const newAgendaUuid = generateUuid();
@@ -50,23 +49,6 @@ INSERT DATA {
     console.error(err);
   });
   return [newAgendaUuid, newAgendaUri];
-};
-
-// TODO: This query can be handled by a resource api-call. Refactor out.
-const approveAgenda = async (agendaURI) => {
-  const query = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  DELETE DATA {
-    GRAPH <${targetGraph}> {
-      ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} .
-    }
-  };
-  INSERT DATA {
-    GRAPH <${targetGraph}> {
-      ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_APPROVED)} .
-    }
-  }`;
-  await mu.update(query);
 };
 
 const zittingInfo = async (zittingUuid) => {
@@ -256,9 +238,62 @@ INSERT DATA {
   return updatePropertiesOnAgendaItems(newAgendaUri);
 };
 
+const rollbackAgendaitems = async (oldAgendaUri) => {
+  const agendaitemUris = (await selectAgendaitemNotFormallyOk(oldAgendaUri)).map(res => res.agendaitem);
+
+  for (const oldVerUri of agendaitemUris) {
+    const rollbackDeleteQuery = `
+PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+
+DELETE {
+  ${sparqlEscapeUri(oldVerUri)} ?p ?rightTarget .
+  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
+} WHERE {
+  ${sparqlEscapeUri(oldVerUri)} a besluit:Agendapunt ;
+  ?p ?rightTarget .
+  FILTER(?p NOT IN (rdf:type, mu:uuid, prov:wasRevisionOf, ext:prioriteit) )
+
+  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
+  FILTER(?pp NOT IN (dct:hasPart, besluitvorming:genereertAgendapunt, prov:wasRevisionOf ))
+}
+`;
+
+    const rollbackInsertQuery = `
+PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+INSERT {
+  ${sparqlEscapeUri(oldVerUri)} ?p ?rightTarget .
+  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
+} WHERE {
+  ${sparqlEscapeUri(oldVerUri)} a besluit:Agendapunt ;
+  prov:wasRevisionOf ?previousAgendaitem .
+  ?previousAgendaitem ?p ?rightTarget .
+  FILTER(?p NOT IN (rdf:type, mu:uuid, prov:wasRevisionOf) )
+
+  ?leftTarget ?pp ?previousAgendaitem .
+  FILTER(?pp NOT IN (dct:hasPart, besluitvorming:genereertAgendapunt, prov:wasRevisionOf ))
+}
+`;
+    await mu.update(rollbackDeleteQuery);
+    await mu.update(rollbackInsertQuery);
+  }
+  return;
+};
+
 export {
   createNewAgenda,
-  approveAgenda,
   storeAgendaItemNumbers,
-  copyAgendaItems
+  copyAgendaItems,
+  rollbackAgendaitems,
 };
