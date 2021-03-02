@@ -27,7 +27,11 @@ app.post('/rollbackAgendaitemsNotFormallyOk', async (req, res) => {
   const oldAgendaURI = await getAgendaURI(oldAgendaId);
   // Rollback agendaitems that were not approvable on the agenda.
  await agendaApproval.rollbackAgendaitems(oldAgendaURI);
-  res.send({status: ok, statusCode: 200 });
+ setTimeout(() => {
+    // TODO This timeout is a cheesy way to ensure cache was reloaded before sending our response
+    // Reason for this: frontend reloads yielded stale data right after this api call and the next save would save that stale data
+    res.send({status: ok, statusCode: 200 });
+  }, 2000);
 });
 
 app.use(errorHandler);
