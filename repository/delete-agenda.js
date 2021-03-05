@@ -12,15 +12,15 @@ const targetGraph = 'http://mu.semte.ch/application';
  */
 const deleteAgendaitems = async (deleteAgendaURI) => {
   const agendaItemUrisQueryResult = await selectAgendaItems(deleteAgendaURI);
-  const listOfAgendaitemUris = agendaItemUrisQueryResult.map(uri => uri.agendaitem);
+  const listOfAgendaItemUris = agendaItemUrisQueryResult.map(uri => uri.agendaitem);
 
-  for (const agendaItemUri of listOfAgendaitemUris) {
+  for (const agendaItemUri of listOfAgendaItemUris) {
     await deleteAgendaitem(agendaItemUri);
   }
 };
 
 /**
- * Deletes the relations and its content of an agendaItem.
+ * Deletes the relations and its content of an agendaitem.
  * @description This function will delete all predicates that are related to agendaitem.
  * @name deleteAgendaitem
  * @function
