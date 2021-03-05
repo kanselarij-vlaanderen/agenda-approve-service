@@ -44,7 +44,7 @@ app.post('/deleteAgenda', async (req, res) => {
   }
   try {
     const agendaToDeleteURI = await getAgendaURI(agendaToDeleteId);
-    await agendaDeletion.deleteAgendaActivities(agendaToDeleteURI);
+    await agendaDeletion.cleanupNewAgendaitems(agendaToDeleteURI);
     await agendaDeletion.deleteAgendaitems(agendaToDeleteURI);
     await agendaDeletion.deleteAgenda(agendaToDeleteURI);
     res.send({status: ok, statusCode: 200 });
