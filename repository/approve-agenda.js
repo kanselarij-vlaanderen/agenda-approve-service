@@ -11,8 +11,8 @@ import { selectAgendaItems, selectAgendaitemNotFormallyOk } from './agenda-gener
 const targetGraph = 'http://mu.semte.ch/application';
 const batchSize = process.env.BATCH_SIZE || 100;
 
-const AGENDA_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendas/';
-const AGENDA_ITEM_RESOURCE_BASE = 'http://kanselarij.vo.data.gift/id/agendapunten/';
+const AGENDA_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agenda/';
+const AGENDA_ITEM_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agendapunt/';
 const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
 
 const createNewAgenda = async (req, res, oldAgendaURI) => {
