@@ -218,6 +218,7 @@ const deleteAgenda = async (deleteAgendaURI) => {
 
 export {
   deleteAgendaitems,
+  deleteAgendaitem,
   cleanupNewAgendaitems,
   deleteAgenda
 };

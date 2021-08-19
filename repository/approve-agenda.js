@@ -6,7 +6,8 @@ import mu, {
   uuid as generateUuid
 } from 'mu';
 import moment from 'moment';
-import { selectAgendaItems, selectAgendaitemNotFormallyOk } from './agenda-general';
+import * as agendaGeneral from './agenda-general';
+import { deleteAgendaitem } from './delete-agenda';
 
 const targetGraph = 'http://mu.semte.ch/application';
 const batchSize = process.env.BATCH_SIZE || 100;
@@ -212,7 +213,7 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
 };
 
 const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
-  const agendaItemUris = (await selectAgendaItems(oldAgendaUri)).map(res => res.agendaitem);
+  const agendaItemUris = (await agendaGeneral.selectAgendaItems(oldAgendaUri)).map(res => res.agendaitem);
 
   for (const oldVerUri of agendaItemUris) {
     const uuid = generateUuid();
@@ -238,8 +239,36 @@ INSERT DATA {
   return updatePropertiesOnAgendaItems(newAgendaUri);
 };
 
+const enforceFormalOkRules = async (agendaUri) => {
+  console.log('****************** enforcing formally ok rules ******************');
+  const count = 0;
+  // Remove new agendaitems that were not "formally ok" from agenda
+  count += await removeAgendaItems(agendaUri);
+  // Rollback approved agendaitems that were not "formally ok" from agenda
+  count += await rollbackAgendaitems(agendaUri);
+  // Optional: only if items were removed or rolled back (in case of priority also rolled back)
+  if (count) {
+    // Sort the agendaitems if needed
+    await sortAgendaitemsOnAgenda(agendaUri);
+  }
+  return count;
+}
+
+const removeAgendaItems = async (agendaUri) => {
+  console.log('****************** formally ok rules - remove new items ******************');
+  const agendaitemUris = (await agendaGeneral.selectNewAgendaItemsNotFormallyOk(agendaUri)).map(res => res.agendaitem);
+  const count = agendaitemUris.length;
+
+  for (const agendaItemUri of agendaitemUris) {
+    await deleteAgendaitem(agendaItemUri);
+  }
+  return count;
+}
+
 const rollbackAgendaitems = async (oldAgendaUri) => {
-  const agendaitemUris = (await selectAgendaitemNotFormallyOk(oldAgendaUri)).map(res => res.agendaitem);
+  console.log('****************** formally ok rules - rollback approved items ******************');
+  const agendaitemUris = (await agendaGeneral.selectApprovedAgendaItemsNotFormallyOk(oldAgendaUri)).map(res => res.agendaitem);
+  const count = agendaitemUris.length;
 
   for (const oldVerUri of agendaitemUris) {
     const rollbackDeleteQuery = `
@@ -288,12 +317,95 @@ INSERT {
     await mu.update(rollbackDeleteQuery);
     await mu.update(rollbackInsertQuery);
   }
+  return count;
+};
+
+const sortAgendaitemsOnAgenda = async (agendaUri) => {
+  console.log('****************** formally ok rules - sorting agendaitems on agenda ******************');
+  const agendaitems = await agendaGeneral.selectAgendaItemsForSorting(agendaUri);
+  console.log('agendaitems', agendaitems);
+  const notes = agendaitems.filter(agendaitem => !agendaitem.isRemark);
+  const announcements = agendaitems.filter(agendaitem => agendaitem.isRemark);
+  const targetsToUpdate = [];
+
+
+  // TODO fix code duplicate?
+  notes.map((agendaitem, index) => {
+    if (agendaitem.priority !== index + 1) {
+      agendaitem.newPriority = index + 1;
+      targetsToUpdate.push(agendaitem);
+    }
+  });
+
+  announcements.map((agendaitem, index) => {
+    if (agendaitem.priority !== index + 1) {
+      agendaitem.newPriority = index + 1;
+      targetsToUpdate.push(agendaitem);
+    }
+  });
+
+  console.log('notes', notes);
+  console.log('announcements', announcements);
+
+  for (const target of targetsToUpdate) {
+    // only update if update is needed
+    if (target.priority !== target.newPriority) {
+      const query = `
+      PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  
+      DELETE {
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?priority .
+      }
+      INSERT {
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ${sparqlEscapeInt(target.newPriority)} .
+      }
+      WHERE {
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?priority .
+      }
+      `;
+      await mu.update(query);
+    }
+  }
   return;
 };
 
+const sortNewAgenda = async (agendaUri) => {
+  console.log('****************** formally ok rules - sorting agendaitems on new agenda ******************');
+  const newAgendaitems = (await agendaGeneral.selectNewAgendaItemsNotFormallyOk(agendaUri));
+  newAgendaitems.map((agendaitem, index) => {
+    agendaitem.newPriority = index + 999;
+  });
+  for (const target of newAgendaitems) {
+    const query = `
+      PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+
+      DELETE {
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?priority .
+      }
+      INSERT {
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ${sparqlEscapeInt(target.newPriority)} .
+      }
+      WHERE {
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?priority .
+      }
+      `;
+    await mu.update(query);
+  }
+
+  // If we had any targets, sort the agendaitems of the entire agenda
+  if (newAgendaitems) {
+    await sortAgendaitemsOnAgenda(agendaUri);
+  }
+};
+
+
 export {
+  setApprovedStatus,
+  setClosedStatus,
   createNewAgenda,
   storeAgendaItemNumbers,
   copyAgendaItems,
   rollbackAgendaitems,
+  enforceFormalOkRules,
+  sortNewAgenda,
 };
