@@ -16,13 +16,12 @@ const AGENDA_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agenda/';
 const AGENDA_ITEM_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agendapunt/';
 const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
 
-const createNewAgenda = async (req, res, oldAgendaURI) => {
+const createNewAgenda = async (meetingUuid, oldAgendaURI) => {
   const newAgendaUuid = generateUuid();
   const newAgendaUri = AGENDA_RESOURCE_BASE + newAgendaUuid;
   const creationDate = new Date();
-  const session = req.body.createdFor;
   const serialNumbers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const { sessionUri, agendaCount, zittingDate } = await zittingInfo(session);
+  const { sessionUri, agendaCount, zittingDate } = await zittingInfo(meetingUuid);
   const serialNumber = serialNumbers[agendaCount] || agendaCount;
   const title = `Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}`;
   const query = `
@@ -241,7 +240,7 @@ INSERT DATA {
 
 const enforceFormalOkRules = async (agendaUri) => {
   console.log('****************** enforcing formally ok rules ******************');
-  const count = 0;
+  let count = 0;
   // Remove new agendaitems that were not "formally ok" from agenda
   count += await removeAgendaItems(agendaUri);
   // Rollback approved agendaitems that were not "formally ok" from agenda
@@ -400,8 +399,6 @@ const sortNewAgenda = async (agendaUri) => {
 
 
 export {
-  setApprovedStatus,
-  setClosedStatus,
   createNewAgenda,
   storeAgendaItemNumbers,
   copyAgendaItems,

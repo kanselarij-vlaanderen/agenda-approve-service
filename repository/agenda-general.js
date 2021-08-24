@@ -1,4 +1,5 @@
 import mu, {
+  sparqlEscapeDateTime,
   sparqlEscapeString,
   sparqlEscapeUri
 } from 'mu';
@@ -137,16 +138,12 @@ const setAgendaStatus = async (agendaURI, statusURI) => {
   PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {
-    GRAPH <${targetGraph}> { 
-        ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ?oldAgendaStatus ;
-          dct:modified ?oldModified .
-    }
+    ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ?oldAgendaStatus ;
+      dct:modified ?oldModified .
   }
   INSERT {
-      GRAPH <${targetGraph}> { 
-          ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(statusURI)} ;
-            dct:modified ${sparqlEscapeDateTime(modifiedDate)} .
-      }
+    ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(statusURI)} ;
+      dct:modified ${sparqlEscapeDateTime(modifiedDate)} .
   }
   WHERE {
     ${sparqlEscapeUri(agendaURI)} a besluitvorming:Agenda ;

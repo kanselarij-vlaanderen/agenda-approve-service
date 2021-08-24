@@ -1,4 +1,5 @@
 import mu, {
+  sparqlEscapeDateTime,
   sparqlEscapeString,
   sparqlEscapeUri
 } from 'mu';
@@ -23,31 +24,30 @@ const getMeetingURI = async (meetingId) => {
 };
 
 const closeMeeting = async (meetingURI, agendaURI) => {
+  // TODO KAS-2452 defaults for isFinal, modified and agenda ? optionals are needed because data does not exist
   const modifiedDate = new Date();
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX mulit: <http://mu.semte.ch/vocabularies/typed-literals/>
+  PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
 
   DELETE {
-    GRAPH <${targetGraph}> { 
-      ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda ;
-        dct:modified ?oldModified ;
-        ext:finaleZittingVersie ?oldStatus .
-    }
+    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda ;
+      dct:modified ?oldModified ;
+      ext:finaleZittingVersie ?oldStatus .
   }
   INSERT {
-    GRAPH <${targetGraph}> { 
-      ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ${sparqlEscapeUri(agendaURI)} ;
-        dct:modified ${sparqlEscapeDateTime(modifiedDate)} ;
-        ext:finaleZittingVersie "true"^^mulit:boolean .
-    }
+    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ${sparqlEscapeUri(agendaURI)} ;
+      dct:modified ${sparqlEscapeDateTime(modifiedDate)} ;
+      ext:finaleZittingVersie "true"^^mulit:boolean .
   }
   WHERE {
     ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit ;
-      dct:modified ?oldModified ;
       ^besluitvorming:isAgendaVoor ${sparqlEscapeUri(agendaURI)} .
+      OPTIONAL { ${sparqlEscapeUri(meetingURI)} dct:modified ?oldModified . }
+      OPTIONAL { ${sparqlEscapeUri(meetingURI)} ext:finaleZittingVersie ?oldStatus . }
       OPTIONAL { ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda . }
   }`;
   return await mu.update(query);
@@ -65,8 +65,11 @@ const getDesignAgenda = async (meetingURI) => {
       ?designAgenda besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} .
   }`;
 
-  const result = await mu.query(query)
-  return result.results.bindings[0].designAgenda.value;
+  const result = await mu.query(query);
+  if (result.results.bindings.length) {
+    return result.results.bindings[0].designAgenda.value;
+  }
+  return null;
 }
 
 const getLastApprovedAgenda = async (meetingURI) => {
@@ -75,6 +78,7 @@ const getLastApprovedAgenda = async (meetingURI) => {
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX mulit: <http://mu.semte.ch/vocabularies/typed-literals/>
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
   SELECT (?agendaId AS ?lastApprovedId) (?agenda AS ?lastApprovedAgendaUri) 
   WHERE {
@@ -87,8 +91,10 @@ const getLastApprovedAgenda = async (meetingURI) => {
   `;
 
   const result = await mu.query(query);
+  console.log('************ result', result )
   const parsedResult = util.parseSparqlResults(result);
-  return parsedResult[0];
+  console.log('************ parsedResult', parsedResult )
+  return [parsedResult[0].lastApprovedId, parsedResult[0].lastApprovedAgendaUri];
 }
 
 export {
