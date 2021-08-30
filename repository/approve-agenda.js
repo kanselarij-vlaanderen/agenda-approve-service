@@ -9,7 +9,6 @@ import moment from 'moment';
 import * as agendaGeneral from './agenda-general';
 import { deleteAgendaitem } from './delete-agenda';
 
-const targetGraph = 'http://mu.semte.ch/application';
 const batchSize = process.env.BATCH_SIZE || 100;
 
 const AGENDA_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agenda/';
@@ -33,17 +32,15 @@ PREFIX dct: <http://purl.org/dc/terms/>
 PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
 
 INSERT DATA {
-    GRAPH <${targetGraph}> { 
-        ${sparqlEscapeUri(newAgendaUri)} a besluitvorming:Agenda ;
-            mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
-            dct:created ${sparqlEscapeDateTime(creationDate)} ;
-            dct:modified ${sparqlEscapeDateTime(creationDate)} ;
-            dct:title ${sparqlEscapeString(title)} ;
-            besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
-            besluitvorming:isAgendaVoor ${sparqlEscapeUri(sessionUri)} ;
-            besluitvorming:volgnummer ${sparqlEscapeString(serialNumber)} ;
-            prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
-    }
+  ${sparqlEscapeUri(newAgendaUri)} a besluitvorming:Agenda ;
+    mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
+    dct:created ${sparqlEscapeDateTime(creationDate)} ;
+    dct:modified ${sparqlEscapeDateTime(creationDate)} ;
+    dct:title ${sparqlEscapeString(title)} ;
+    besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
+    besluitvorming:isAgendaVoor ${sparqlEscapeUri(sessionUri)} ;
+    besluitvorming:volgnummer ${sparqlEscapeString(serialNumber)} ;
+    prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
 }`;
   await mu.update(query).catch(err => {
     console.error(err);
@@ -107,9 +104,7 @@ ORDER BY ?priorityOrMax`;
 PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 
 INSERT DATA {
-    GRAPH <${targetGraph}> {
-        ${triples.join('\n        ')}
-    }
+  ${triples.join('\n        ')}
 }`;
   await mu.update(query).catch(err => {
     console.log(err);
@@ -174,9 +169,7 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
   INSERT { 
-    GRAPH <${targetGraph}> {
-      ?target ?p ?o .
-    }
+    ?target ?p ?o .
   } WHERE {
     VALUES (?target) {
       (${targets.map(sparqlEscapeUri).join(')\n      (')})
@@ -195,9 +188,7 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
   INSERT { 
-    GRAPH <${targetGraph}> {
-      ?o ?p ?target .
-    }
+    ?o ?p ?target .
   } WHERE {
     VALUES (?target) {
       (${targets.map(sparqlEscapeUri).join(')\n      (')})
