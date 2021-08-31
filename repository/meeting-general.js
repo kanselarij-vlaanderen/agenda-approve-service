@@ -24,7 +24,7 @@ const getMeetingURI = async (meetingId) => {
 };
 
 const closeMeeting = async (meetingURI, agendaURI) => {
-  // TODO KAS-2452 no defaults for isFinal and agenda ? optionals are needed because data does not exist
+  // TODO KAS-2452 fronted has no default for meeting.isFinal (should be false)
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -40,10 +40,10 @@ const closeMeeting = async (meetingURI, agendaURI) => {
       ext:finaleZittingVersie "true"^^mulit:boolean .
   }
   WHERE {
-    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit ;
-      ^besluitvorming:isAgendaVoor ${sparqlEscapeUri(agendaURI)} .
-      OPTIONAL { ${sparqlEscapeUri(meetingURI)} ext:finaleZittingVersie ?oldStatus . }
-      OPTIONAL { ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda . }
+    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
+    ${sparqlEscapeUri(agendaURI)} besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} .
+    OPTIONAL { ${sparqlEscapeUri(meetingURI)} ext:finaleZittingVersie ?oldStatus . }
+    OPTIONAL { ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda . }
   }`;
   return await mu.update(query);
 }
@@ -55,9 +55,9 @@ const getDesignAgenda = async (meetingURI) => {
 
   SELECT ?designAgenda
   WHERE {
-    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit ;
-      ^besluitvorming:isAgendaVoor ?designAgenda .
-      ?designAgenda besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} .
+    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
+    ?designAgenda besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} ;
+      besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} .
   }`;
 
   const result = await mu.query(query);
@@ -77,9 +77,9 @@ const getLastApprovedAgenda = async (meetingURI) => {
 
   SELECT (?agendaId AS ?lastApprovedId) (?agenda AS ?lastApprovedAgendaUri) 
   WHERE {
-    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit ;
-      ^besluitvorming:isAgendaVoor ?agenda .
-    ?agenda mu:uuid ?agendaId ;
+    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
+    ?agenda besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} ;
+      mu:uuid ?agendaId ;
       besluitvorming:volgnummer ?serialnumber .
     FILTER NOT EXISTS { ?agenda besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} . }
   } ORDER BY DESC(?serialnumber) LIMIT 1
@@ -88,9 +88,28 @@ const getLastApprovedAgenda = async (meetingURI) => {
   const result = await mu.query(query);
   if (result.results.bindings[0]) {
     const parsedResult = util.parseSparqlResults(result);
-    return [parsedResult[0].lastApprovedId, parsedResult[0].lastApprovedAgendaUri];
+    return {id: parsedResult[0].lastApprovedId, uri: parsedResult[0].lastApprovedAgendaUri};
   }
-  return [null, null];
+  return null;
+}
+
+const updateLastApprovedAgenda = async (meetingURI, lastApprovedAgendaUri) => {
+  // TODO Workaround for cache not update when an agenda with only an approval is deleted
+  const deleteQuery = `
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+
+  DELETE DATA {
+    ${sparqlEscapeUri(lastApprovedAgendaUri)} besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} .
+  }`;
+
+  const insertQuery = `
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+
+  INSERT DATA {
+    ${sparqlEscapeUri(lastApprovedAgendaUri)} besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} .
+  }`;
+  await mu.update(deleteQuery);
+  return await mu.update(insertQuery);
 }
 
 export {
@@ -98,4 +117,5 @@ export {
   closeMeeting,
   getDesignAgenda,
   getLastApprovedAgenda,
+  updateLastApprovedAgenda,
 };

@@ -313,13 +313,11 @@ INSERT {
 const sortAgendaitemsOnAgenda = async (agendaUri) => {
   console.log('****************** formally ok rules - sorting agendaitems on agenda ******************');
   const agendaitems = await agendaGeneral.selectAgendaItemsForSorting(agendaUri);
-  console.log('agendaitems', agendaitems);
   const notes = agendaitems.filter(agendaitem => !agendaitem.isRemark);
   const announcements = agendaitems.filter(agendaitem => agendaitem.isRemark);
   const targetsToUpdate = [];
 
-
-  // TODO fix code duplicate?
+  // TODO KAS-2452 fix code duplicate?
   notes.map((agendaitem, index) => {
     if (agendaitem.priority !== index + 1) {
       agendaitem.newPriority = index + 1;
@@ -333,9 +331,6 @@ const sortAgendaitemsOnAgenda = async (agendaUri) => {
       targetsToUpdate.push(agendaitem);
     }
   });
-
-  console.log('notes', notes);
-  console.log('announcements', announcements);
 
   for (const target of targetsToUpdate) {
     // only update if update is needed

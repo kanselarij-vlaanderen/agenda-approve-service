@@ -17,10 +17,10 @@ const deleteNewsletter = async (meetingURI) => {
     ${sparqlEscapeUri(meetingURI)} ext:algemeneNieuwsbrief ?newsletter .
     ?newsletter a besluitvorming:NieuwsbriefInfo ;
       ?p ?o .
-      OPTIONAL {
-        ?s ?pp ?newsletter .
-      }
-    FILTER NOT EXISTS {${sparqlEscapeUri(meetingURI)} ^besluitvorming:isAgendaVoor ?anyAgenda . }
+    OPTIONAL {
+      ?s ?pp ?newsletter .
+    }
+    FILTER NOT EXISTS { ?anyAgenda besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} . }
   }`;
   await mu.query(query);
   
@@ -37,10 +37,10 @@ const deleteMeeting = async (meetingURI) => {
   } WHERE {
     ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit ;
       ?p ?o .
-      OPTIONAL {
-        ?s ?pp ${sparqlEscapeUri(meetingURI)} .
-      }
-    FILTER NOT EXISTS {${sparqlEscapeUri(meetingURI)} ^besluitvorming:isAgendaVoor ?anyAgenda . }
+    OPTIONAL {
+      ?s ?pp ${sparqlEscapeUri(meetingURI)} .
+    }
+    FILTER NOT EXISTS { ?anyAgenda besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} . }
   }`;
   await mu.query(query);
 };

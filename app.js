@@ -11,7 +11,7 @@ import * as meetingDeletion from './repository/delete-meeting';
 app.use(bodyParser.json({ type: 'application/*+json' }));
 app.use(errorHandler);
 
-// TODO KAS-2452 all frontend validations WHEN an action should be allowed 
+// TODO KAS-2452 all frontend validations WHEN an action should be allowed (or risk actions being )
 
 /**
  * approveAgenda
@@ -30,7 +30,7 @@ app.use(errorHandler);
  *    - recurring agendaitems that were not formally OK have to be rolled back
  *    - agendaitems have to be sorted to fix gaps in numbering (only if there were new agendaitems that have been deleted)
  * actions on new agenda:
- * - new agendaitems have to be resorted to the bottom of the lists (approval and nota separately)
+ * - new agendaitems (if any) have to be resorted to the bottom of the lists (approval and nota separately)
  * @returns the id of the created agenda
  */
 app.post('/approveAgenda', async (req, res) => {
@@ -49,7 +49,7 @@ app.post('/approveAgenda', async (req, res) => {
   if (countOfAgendaitem) {
     await agendaApproval.sortNewAgenda(newAgendaURI);
   }
-
+  // timeout doesn't seem needed because of route change in frontend
   res.send({status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId }}});
 });
 
@@ -83,7 +83,7 @@ app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
   await meetingGeneral.closeMeeting(meetingURI, agendaURI);
   await agendaApproval.enforceFormalOkRules(agendaURI);
 
-  // We need a small timeout in order for the cache to be cleared by deltas
+  // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes from cache)
   setTimeout(() => {
     res.send({status: ok, statusCode: 200});
   }, 1500);
@@ -103,7 +103,6 @@ app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
  * @returns the id of the last approved agenda
  */
 app.post('/closeMeeting', async (req, res) => {
-  // TODO KAS-2452 should only be reachable if there is at least 1 approved agenda, do we want to check this here ?
   const meetingId = req.body.meetingId;
   if(!meetingId){
     res.send({status: "fail", statusCode: 400, error: "meeting id is missing, closing of meeting failed"});
@@ -111,48 +110,45 @@ app.post('/closeMeeting', async (req, res) => {
   }
   const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
   const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
-  const [lastApprovedAgendaId, lastApprovedAgendaURI] = await meetingGeneral.getLastApprovedAgenda(meetingURI);
-  await agendaGeneral.setAgendaStatusClosed(lastApprovedAgendaURI);
-  await meetingGeneral.closeMeeting(meetingURI, lastApprovedAgendaURI);
+  const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
+  await agendaGeneral.setAgendaStatusClosed(lastApprovedAgenda.uri);
+  await meetingGeneral.closeMeeting(meetingURI, lastApprovedAgenda.uri);
+  await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO KAS-2452 workaround for cache (deleting agenda with only an approval item)
   if (designAgendaURI) {
     await agendaDeletion.deleteAgendaAndAgendaitems(designAgendaURI);
   }
+  // timeout doesn't seem needed here
   // setTimeout(() => {
-    res.send({status: ok, statusCode: 200, body: { lastApprovedAgenda: { id: lastApprovedAgendaId }}});
+    res.send({status: ok, statusCode: 200, body: { lastApprovedAgenda: { id: lastApprovedAgenda.id }}});
   // }, 1500);
 });
 
+/**
+ * reopenPreviousAgenda
+ * 
+ * @param meetingId: id of the meeting
+ *
+ * actions on last approved agenda:
+ * - set the design status, modified date
+ * remove the design agenda (if any)
+ *
+ * @returns the id of the last approved agenda that has been reopened
+ */
 app.post('/reopenPreviousAgenda', async (req, res) => {
-  // should only be reachable if there is at least 1 approved agenda, do we want to check this here ?
-  const meetingId = req.body.meetingId; // agenda or meeting id ? should always be initiated from design agenda
+  const meetingId = req.body.meetingId;
   const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
 
   const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
-  const [lastApprovedAgendaId, lastApprovedAgendaURI] = await meetingGeneral.getLastApprovedAgenda(meetingURI);
-
-  await agendaGeneral.setAgendaStatusDesign(lastApprovedAgendaURI);
+  const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
+  await agendaGeneral.setAgendaStatusDesign(lastApprovedAgenda.uri);
 
   // current frontend checks only allow this action if design agenda is present
+  // but there is no reason for this, we should be able to reopen an approved agenda without a designAgenda (same flow, less steps)
   if (designAgendaURI) {
     await agendaDeletion.deleteAgendaAndAgendaitems(designAgendaURI);
   }
-
-  // TODO KAS-2452 frontend code to implement reopenPrevious
-  /*
-  actions on last approved agenda (search or parameter?): (is it possible there is none ?)
-  - set the design status (modified date)
-  actions on meeting:
-  TODO KAS-2452 do we need to change besluitvorming:behandelt here? regular approving does not change/insert this relation, resulting in stale data until closing of the agenda
-  - set the besluitvorming:behandelt to the last approved agenda (first delete other similar relations to enforce one-to-one?)
-  - delete all NEW pieces & files of the approved agendaitems (to remove inconsistencies with subcase), keep pieces of new agendaitems (because they can be proposed to new agenda)
-  - remove the design agenda (full deleteAgenda flow?)
-  return id of previous agenda to navigate in frontend? doesnt really make sense for this method but is needed to reduce frontend logic
-  */
-  // res.send({status: ok, statusCode: 200, body: { reopenedAgenda: { id: lastApprovedAgendaId }}});
-
-  // setTimeout(() => {
-    res.send({status: ok, statusCode: 200, body: { reopenedAgenda: { id: lastApprovedAgendaId }}});
-  // }, 15000);
+  // timeout doesn't seem needed in this case (because currently, there is always a previous agenda, the change in route is enough delay)
+  res.send({status: ok, statusCode: 200, body: { reopenedAgenda: { id: lastApprovedAgenda.id }}});
 });
 
 // TODO KAS-2452 api for create new designagenda ?
@@ -177,23 +173,22 @@ app.post('/deleteAgenda', async (req, res) => {
   }
   try {
     const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
-    // TODO KAS-2452 frontend code to implement PRE delete
-    /*
-    - On the linked meeting, link the besluitvorming:behandelt to the previous agenda (what if it doesn't exist ?)
-    */
+    // TODO KAS-2452 set the besluitvorming:behandelt on meeting to the last approved agenda ?? Should only be needed if an agenda is deleted from a closed meeting (possible, but shouldn't happen?)
     const agendaURI = await agendaGeneral.getAgendaURI(agendaId);
     await agendaDeletion.deleteAgendaAndAgendaitems(agendaURI);
-    const [lastApprovedAgendaId, lastApprovedAgendaURI] = await meetingGeneral.getLastApprovedAgenda(meetingURI);
-    console.log('********lastApprovedAgendaId', lastApprovedAgendaId);
-    console.log('********lastApprovedAgendaURI', lastApprovedAgendaURI);
-    if (!lastApprovedAgendaURI) {
-      console.log('********DELETING MEETING');
+    // We get the last approved agenda after deletion, because it is possible to delete approved agendas
+    const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
+    if (!lastApprovedAgenda) {
       await meetingDeletion.deleteMeetingAndNewsletter(meetingURI);
+    } else {
+      await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO KAS-2452 workaround for cache (deleting agenda with only an approval item)
     }
+    // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting.agendas from cache)
     setTimeout(() => {
       res.send({status: ok, statusCode: 200});
-    }, 3000);
+    }, 1500);
   } catch (e) {
+    // TODO KAS-2452 do we want a try catch on each of these API calls ?
     res.send({status: "fail", statusCode: 500, error: "something went wrong while deleting the agenda", e});
   }
 });
