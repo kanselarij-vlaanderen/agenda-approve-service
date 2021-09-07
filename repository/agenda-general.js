@@ -77,7 +77,7 @@ const selectApprovedAgendaItemsNotFormallyOk = async (agendaURI) => {
  * @function
  * @param {String} agendaURI - The URI of the agenda containing the agendaitem URIs
  */
- const selectNewAgendaItemsNotFormallyOk = async (agendaURI) => {
+const selectNewAgendaItemsNotFormallyOk = async (agendaURI) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
@@ -101,7 +101,7 @@ const selectApprovedAgendaItemsNotFormallyOk = async (agendaURI) => {
  * @function
  * @param {String} agendaURI - The URI of the agenda containing the agendaitem URIs
  */
- const selectAgendaItemsForSorting = async (agendaURI) => {
+const selectAgendaItemsForSorting = async (agendaURI) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>

@@ -11,7 +11,7 @@ import * as meetingDeletion from './repository/delete-meeting';
 app.use(bodyParser.json({ type: 'application/*+json' }));
 app.use(errorHandler);
 
-// TODO KAS-2452 all frontend validations WHEN an action should be allowed (or risk actions being )
+// *** NOTE *** these actions should only be executable in certain conditions (the rules for it are only in the frontend)
 
 /**
  * approveAgenda
@@ -36,8 +36,8 @@ app.use(errorHandler);
 app.post('/approveAgenda', async (req, res) => {
   const oldAgendaId = req.body.oldAgendaId;
   const meetingId = req.body.meetingId;
-  if(!oldAgendaId || !meetingId){
-    res.send({status: "fail", statusCode: 400, error: "agenda or meeting id is missing, approval of agenda failed"});
+  if (!oldAgendaId || !meetingId) {
+    res.send({ status: "fail", statusCode: 400, error: "agenda or meeting id is missing, approval of agenda failed" });
     return;
   }
   const oldAgendaURI = await agendaGeneral.getAgendaURI(oldAgendaId);
@@ -49,8 +49,10 @@ app.post('/approveAgenda', async (req, res) => {
   if (countOfAgendaitem) {
     await agendaApproval.sortNewAgenda(newAgendaURI);
   }
-  // timeout doesn't seem needed because of route change in frontend
-  res.send({status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId }}});
+  // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
+  setTimeout(() => {
+    res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
+  }, 1500);
 });
 
 /**
@@ -73,8 +75,8 @@ app.post('/approveAgenda', async (req, res) => {
 app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
   const meetingId = req.body.meetingId;
   const agendaId = req.body.agendaId;
-  if(!agendaId || !meetingId){
-    res.send({status: "fail", statusCode: 400, error: "agenda or meeting id is missing, approval and closing of agenda failed"});
+  if (!agendaId || !meetingId) {
+    res.send({ status: "fail", statusCode: 400, error: "agenda or meeting id is missing, approval and closing of agenda failed" });
     return;
   }
   const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
@@ -83,9 +85,9 @@ app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
   await meetingGeneral.closeMeeting(meetingURI, agendaURI);
   await agendaApproval.enforceFormalOkRules(agendaURI);
 
-  // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes from cache)
+  // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
   setTimeout(() => {
-    res.send({status: ok, statusCode: 200});
+    res.send({ status: ok, statusCode: 200 });
   }, 1500);
 });
 
@@ -104,8 +106,8 @@ app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
  */
 app.post('/closeMeeting', async (req, res) => {
   const meetingId = req.body.meetingId;
-  if(!meetingId){
-    res.send({status: "fail", statusCode: 400, error: "meeting id is missing, closing of meeting failed"});
+  if (!meetingId) {
+    res.send({ status: "fail", statusCode: 400, error: "meeting id is missing, closing of meeting failed" });
     return;
   }
   const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
@@ -113,14 +115,15 @@ app.post('/closeMeeting', async (req, res) => {
   const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
   await agendaGeneral.setAgendaStatusClosed(lastApprovedAgenda.uri);
   await meetingGeneral.closeMeeting(meetingURI, lastApprovedAgenda.uri);
-  await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO KAS-2452 workaround for cache (deleting agenda with only an approval item)
+  await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO workaround for cache (deleting agenda with only an approval item)
   if (designAgendaURI) {
     await agendaDeletion.deleteAgendaAndAgendaitems(designAgendaURI);
   }
-  // timeout doesn't seem needed here
-  // setTimeout(() => {
-    res.send({status: ok, statusCode: 200, body: { lastApprovedAgenda: { id: lastApprovedAgenda.id }}});
-  // }, 1500);
+
+  // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
+  setTimeout(() => {
+    res.send({ status: ok, statusCode: 200, body: { lastApprovedAgenda: { id: lastApprovedAgenda.id } } });
+  }, 1500);
 });
 
 /**
@@ -148,10 +151,8 @@ app.post('/reopenPreviousAgenda', async (req, res) => {
     await agendaDeletion.deleteAgendaAndAgendaitems(designAgendaURI);
   }
   // timeout doesn't seem needed in this case (because currently, there is always a previous agenda, the change in route is enough delay)
-  res.send({status: ok, statusCode: 200, body: { reopenedAgenda: { id: lastApprovedAgenda.id }}});
+  res.send({ status: ok, statusCode: 200, body: { reopenedAgenda: { id: lastApprovedAgenda.id } } });
 });
-
-// TODO KAS-2452 api for create new designagenda ?
 
 /**
  * deleteAgenda
@@ -167,13 +168,12 @@ app.post('/reopenPreviousAgenda', async (req, res) => {
 app.post('/deleteAgenda', async (req, res) => {
   const meetingId = req.body.meetingId;
   const agendaId = req.body.agendaId;
-  if(!agendaId || !meetingId){
-    res.send({status: "fail", statusCode: 400, error: "agenda or meeting id is missing, deletion of agenda failed"});
+  if (!agendaId || !meetingId) {
+    res.send({ status: "fail", statusCode: 400, error: "agenda or meeting id is missing, deletion of agenda failed" });
     return;
   }
   try {
     const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
-    // TODO KAS-2452 set the besluitvorming:behandelt on meeting to the last approved agenda ?? Should only be needed if an agenda is deleted from a closed meeting (possible, but shouldn't happen?)
     const agendaURI = await agendaGeneral.getAgendaURI(agendaId);
     await agendaDeletion.deleteAgendaAndAgendaitems(agendaURI);
     // We get the last approved agenda after deletion, because it is possible to delete approved agendas
@@ -181,14 +181,45 @@ app.post('/deleteAgenda', async (req, res) => {
     if (!lastApprovedAgenda) {
       await meetingDeletion.deleteMeetingAndNewsletter(meetingURI);
     } else {
-      await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO KAS-2452 workaround for cache (deleting agenda with only an approval item)
+      await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO workaround for cache (deleting agenda with only an approval item)
     }
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting.agendas from cache)
     setTimeout(() => {
-      res.send({status: ok, statusCode: 200});
+      res.send({ status: ok, statusCode: 200 });
     }, 1500);
   } catch (e) {
     // TODO KAS-2452 do we want a try catch on each of these API calls ?
-    res.send({status: "fail", statusCode: 500, error: "something went wrong while deleting the agenda", e});
+    res.send({ status: "fail", statusCode: 500, error: "something went wrong while deleting the agenda", e });
   }
+});
+
+  /**
+ * createDesignAgenda
+ * 
+ * @param meetingId: id of the meeting
+ * 
+ * actions on meeting:
+ * - set ext:finaleZittingVersie to false
+ * - delete the besluitvorming:behandelt relation
+ * actions on latest approved agenda:
+ * - set the approved status, modified date
+ * creating design agenda:
+ * - create new agenda
+ * - copy the agendaitems (insert new agendaitems, copy left and right triples)
+ * @returns the id of the created agenda
+ */
+app.post('/createDesignAgenda', async (req, res) => {
+  const meetingId = req.body.meetingId;
+  if (!meetingId) {
+    res.send({ status: "fail", statusCode: 400, error: "meeting id is missing, creation of design agenda failed" });
+    return;
+  }
+  const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
+  await meetingGeneral.reopenMeeting(meetingURI);
+  const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
+  await agendaGeneral.setAgendaStatusApproved(lastApprovedAgenda.uri);
+  const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, lastApprovedAgenda.uri);
+  await agendaApproval.copyAgendaItems(lastApprovedAgenda.uri, newAgendaURI);
+
+  res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
 });

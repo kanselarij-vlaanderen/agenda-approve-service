@@ -317,7 +317,6 @@ const sortAgendaitemsOnAgenda = async (agendaUri) => {
   const announcements = agendaitems.filter(agendaitem => agendaitem.isRemark);
   const targetsToUpdate = [];
 
-  // TODO KAS-2452 fix code duplicate?
   notes.map((agendaitem, index) => {
     if (agendaitem.priority !== index + 1) {
       agendaitem.newPriority = index + 1;

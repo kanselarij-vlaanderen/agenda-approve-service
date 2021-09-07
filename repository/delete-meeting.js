@@ -23,7 +23,6 @@ const deleteNewsletter = async (meetingURI) => {
     FILTER NOT EXISTS { ?anyAgenda besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} . }
   }`;
   await mu.query(query);
-  
 };
 
 const deleteMeeting = async (meetingURI) => {

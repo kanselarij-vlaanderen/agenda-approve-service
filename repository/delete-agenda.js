@@ -193,7 +193,7 @@ const deleteAgenda = async (deleteAgendaURI) => {
 const deleteAgendaAndAgendaitems = async (agendaURI) => {
   await cleanupNewAgendaitems(agendaURI);
   await deleteAgendaitems(agendaURI);
-  await deleteAgenda(agendaURI); 
+  await deleteAgenda(agendaURI);
 };
 
 export {

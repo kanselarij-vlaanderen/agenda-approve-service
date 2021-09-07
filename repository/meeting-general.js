@@ -1,5 +1,4 @@
 import mu, {
-  sparqlEscapeDateTime,
   sparqlEscapeString,
   sparqlEscapeUri
 } from 'mu';
@@ -24,7 +23,6 @@ const getMeetingURI = async (meetingId) => {
 };
 
 const closeMeeting = async (meetingURI, agendaURI) => {
-  // TODO KAS-2452 fronted has no default for meeting.isFinal (should be false)
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -42,6 +40,28 @@ const closeMeeting = async (meetingURI, agendaURI) => {
   WHERE {
     ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
     ${sparqlEscapeUri(agendaURI)} besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} .
+    OPTIONAL { ${sparqlEscapeUri(meetingURI)} ext:finaleZittingVersie ?oldStatus . }
+    OPTIONAL { ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda . }
+  }`;
+  return await mu.update(query);
+}
+
+const reopenMeeting = async (meetingURI) => {
+  const query = `
+  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX mulit: <http://mu.semte.ch/vocabularies/typed-literals/>
+  PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
+
+  DELETE {
+    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda ;
+      ext:finaleZittingVersie ?oldStatus .
+  }
+  INSERT {
+    ${sparqlEscapeUri(meetingURI)} ext:finaleZittingVersie "false"^^mulit:boolean .
+  }
+  WHERE {
+    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
     OPTIONAL { ${sparqlEscapeUri(meetingURI)} ext:finaleZittingVersie ?oldStatus . }
     OPTIONAL { ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda . }
   }`;
@@ -88,13 +108,13 @@ const getLastApprovedAgenda = async (meetingURI) => {
   const result = await mu.query(query);
   if (result.results.bindings[0]) {
     const parsedResult = util.parseSparqlResults(result);
-    return {id: parsedResult[0].lastApprovedId, uri: parsedResult[0].lastApprovedAgendaUri};
+    return { id: parsedResult[0].lastApprovedId, uri: parsedResult[0].lastApprovedAgendaUri };
   }
   return null;
 }
 
 const updateLastApprovedAgenda = async (meetingURI, lastApprovedAgendaUri) => {
-  // TODO Workaround for cache not update when an agenda with only an approval is deleted
+  // TODO Workaround for cache not updating when an agenda with only an approval is deleted
   const deleteQuery = `
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 
@@ -115,6 +135,7 @@ const updateLastApprovedAgenda = async (meetingURI, lastApprovedAgendaUri) => {
 export {
   getMeetingURI,
   closeMeeting,
+  reopenMeeting,
   getDesignAgenda,
   getLastApprovedAgenda,
   updateLastApprovedAgenda,
