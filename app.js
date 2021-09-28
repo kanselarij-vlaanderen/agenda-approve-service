@@ -16,9 +16,9 @@ app.use(errorHandler);
 /**
  * approveAgenda
  * 
- * @param oldAgendaId: id of the agenda to approve
- * @param meetingId: id of the meeting
+ * @param meetingId: id of the meeting that has a design agenda to approve
  * 
+ * get the design agenda from the meeting
  * actions on design agenda:
  * - set the approved status, modified date
  * approving the agenda:
@@ -34,18 +34,20 @@ app.use(errorHandler);
  * @returns the id of the created agenda
  */
 app.post('/approveAgenda', async (req, res) => {
-  const oldAgendaId = req.body.oldAgendaId;
   const meetingId = req.body.meetingId;
-  if (!oldAgendaId || !meetingId) {
-    res.send({ status: "fail", statusCode: 400, error: "agenda or meeting id is missing, approval of agenda failed" });
+  if (!meetingId) {
+    res.send({ status: "fail", statusCode: 400, error: "Meeting id is missing, approval of agenda failed" });
     return;
   }
-  const oldAgendaURI = await agendaGeneral.getAgendaURI(oldAgendaId);
-  await agendaGeneral.setAgendaStatusApproved(oldAgendaURI);
-  const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, oldAgendaURI);
-  await agendaApproval.copyAgendaItems(oldAgendaURI, newAgendaURI);
+  const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
+  const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
+  await agendaGeneral.setAgendaStatusApproved(designAgendaURI);
+  // rename the recently approved design agenda for clarity
+  const approvedAgendaURI = designAgendaURI;
+  const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, approvedAgendaURI);
+  await agendaApproval.copyAgendaItems(approvedAgendaURI, newAgendaURI);
   // await agendaApproval.storeAgendaItemNumbers(oldAgendaURI); // TODO: document what this is for. Otherwise remove.
-  const countOfAgendaitem = await agendaApproval.enforceFormalOkRules(oldAgendaURI);
+  const countOfAgendaitem = await agendaApproval.enforceFormalOkRules(approvedAgendaURI);
   if (countOfAgendaitem) {
     await agendaApproval.sortNewAgenda(newAgendaURI);
   }
@@ -58,9 +60,9 @@ app.post('/approveAgenda', async (req, res) => {
 /**
  * approveAgendaAndCloseMeeting
  * 
- * @param agendaId: id of the agenda to approve
  * @param meetingId: id of the meeting to close
  * 
+ * get the design agenda to close (a final approve)
  * actions on design agenda:
  * - set the closed status, modified date
  * actions on meeting:
@@ -74,16 +76,17 @@ app.post('/approveAgenda', async (req, res) => {
  */
 app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
   const meetingId = req.body.meetingId;
-  const agendaId = req.body.agendaId;
-  if (!agendaId || !meetingId) {
-    res.send({ status: "fail", statusCode: 400, error: "agenda or meeting id is missing, approval and closing of agenda failed" });
+  if (!meetingId) {
+    res.send({ status: "fail", statusCode: 400, error: "Meeting id is missing, approval and closing of agenda failed" });
     return;
   }
   const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
-  const agendaURI = await agendaGeneral.getAgendaURI(agendaId);
-  await agendaGeneral.setAgendaStatusClosed(agendaURI);
-  await meetingGeneral.closeMeeting(meetingURI, agendaURI);
-  await agendaApproval.enforceFormalOkRules(agendaURI);
+  const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
+  await agendaGeneral.setAgendaStatusClosed(designAgendaURI);
+  // rename the recently closed design agenda for clarity
+  const closedAgendaURI = designAgendaURI;
+  await meetingGeneral.closeMeeting(meetingURI, closedAgendaURI);
+  await agendaApproval.enforceFormalOkRules(closedAgendaURI);
 
   // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
   setTimeout(() => {
@@ -96,6 +99,7 @@ app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
  * 
  * @param meetingId: id of the meeting to close
  * 
+ * get the last approved agenda & design agenda (if any)
  * actions on last approved agenda:
  * - set the closed status, modified date
  * actions on meeting:
@@ -131,6 +135,7 @@ app.post('/closeMeeting', async (req, res) => {
  * 
  * @param meetingId: id of the meeting
  *
+ * get the last approved agenda & design agenda (if any)
  * actions on last approved agenda:
  * - set the design status, modified date
  * remove the design agenda (if any)
@@ -157,9 +162,11 @@ app.post('/reopenPreviousAgenda', async (req, res) => {
 /**
  * deleteAgenda
  * 
- * @param agendaId: id of the agenda to delete
+ * * NOTE: we only allow the deletion of the latest agenda, to prevent breaking versioning between agendas and agendaitems
+ * 
  * @param meetingId: id of the meeting
  *
+ * get the latest agenda
  * delete the agenda
  * if this agenda was the last agenda on the meeting:
  * - delete the newsletter on the meeting
@@ -167,14 +174,13 @@ app.post('/reopenPreviousAgenda', async (req, res) => {
  */
 app.post('/deleteAgenda', async (req, res) => {
   const meetingId = req.body.meetingId;
-  const agendaId = req.body.agendaId;
-  if (!agendaId || !meetingId) {
-    res.send({ status: "fail", statusCode: 400, error: "agenda or meeting id is missing, deletion of agenda failed" });
+  if (!meetingId) {
+    res.send({ status: "fail", statusCode: 400, error: "Meeting id is missing, deletion of agenda failed" });
     return;
   }
   try {
     const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
-    const agendaURI = await agendaGeneral.getAgendaURI(agendaId);
+    const agendaURI = await meetingGeneral.getLastestAgenda(meetingURI);
     await agendaDeletion.deleteAgendaAndAgendaitems(agendaURI);
     // We get the last approved agenda after deletion, because it is possible to delete approved agendas
     const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
@@ -211,7 +217,7 @@ app.post('/deleteAgenda', async (req, res) => {
 app.post('/createDesignAgenda', async (req, res) => {
   const meetingId = req.body.meetingId;
   if (!meetingId) {
-    res.send({ status: "fail", statusCode: 400, error: "meeting id is missing, creation of design agenda failed" });
+    res.send({ status: "fail", statusCode: 400, error: "Meeting id is missing, creation of design agenda failed" });
     return;
   }
   const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
@@ -221,5 +227,8 @@ app.post('/createDesignAgenda', async (req, res) => {
   const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, lastApprovedAgenda.uri);
   await agendaApproval.copyAgendaItems(lastApprovedAgenda.uri, newAgendaURI);
 
-  res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
+  // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
+  setTimeout(() => {
+    res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
+  }, 1500);
 });

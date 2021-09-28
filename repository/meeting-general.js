@@ -77,6 +77,7 @@ const getDesignAgenda = async (meetingURI) => {
   WHERE {
     ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
     ?designAgenda besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} ;
+      a besluitvorming:Agenda;
       besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} .
   }`;
 
@@ -87,18 +88,23 @@ const getDesignAgenda = async (meetingURI) => {
   return null;
 }
 
+/**
+ * Gets the last approved (or closed = final approved) agenda from the given meeting
+ *
+ * @param {string} meetingURI - The meeting to query from
+ * @returns {*} {lastApprovedId, lastApprovedAgendaUri} or null
+ */
 const getLastApprovedAgenda = async (meetingURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX mulit: <http://mu.semte.ch/vocabularies/typed-literals/>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
   SELECT (?agendaId AS ?lastApprovedId) (?agenda AS ?lastApprovedAgendaUri) 
   WHERE {
     ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
     ?agenda besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} ;
+      a besluitvorming:Agenda ;
       mu:uuid ?agendaId ;
       besluitvorming:volgnummer ?serialnumber .
     FILTER NOT EXISTS { ?agenda besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} . }
@@ -113,6 +119,42 @@ const getLastApprovedAgenda = async (meetingURI) => {
   return null;
 }
 
+/**
+ * Gets the latest agenda from the given meeting, regardless of the agenda status
+ *
+ * @param {uri} meetingURI
+ * @returns {*} agendaURI or null
+ */
+const getLastestAgenda = async (meetingURI) => {
+  const query = `
+  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+
+  SELECT DISTINCT ?agenda
+  WHERE {
+    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
+    ?agenda besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} ;
+      a besluitvorming:Agenda ;
+      besluitvorming:volgnummer ?serialnumber .
+  } ORDER BY DESC(?serialnumber) LIMIT 1
+  `;
+
+  const result = await mu.query(query);
+  if (result.results.bindings.length) {
+    return result.results.bindings[0].agenda.value;
+  }
+  // should be unreabable, a meeting without agendas shouldn't exist
+  return null;
+}
+
+/**
+ * In order to trigger a cache invalidation in some cases
+ * We delete and reinsert the relation between meeting and agenda
+ *
+ * @param {uri} meetingURI 
+ * @param {uri} lastApprovedAgendaUri 
+ * @returns {void}
+ */
 const updateLastApprovedAgenda = async (meetingURI, lastApprovedAgendaUri) => {
   // TODO Workaround for cache not updating when an agenda with only an approval is deleted
   const deleteQuery = `
@@ -138,5 +180,6 @@ export {
   reopenMeeting,
   getDesignAgenda,
   getLastApprovedAgenda,
+  getLastestAgenda,
   updateLastApprovedAgenda,
 };
