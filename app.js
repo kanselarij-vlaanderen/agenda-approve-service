@@ -8,6 +8,8 @@ import * as agendaApproval from './repository/approve-agenda';
 import * as agendaDeletion from './repository/delete-agenda';
 import * as meetingDeletion from './repository/delete-meeting';
 
+const responseTimeout = process.env.RES_TIMEOUT || 1500;
+
 app.use(bodyParser.json({ type: 'application/*+json' }));
 app.use(errorHandler);
 
@@ -54,7 +56,7 @@ app.post('/approveAgenda', async (req, res) => {
   // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
   setTimeout(() => {
     res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
-  }, 1500);
+  }, responseTimeout);
 });
 
 /**
@@ -91,7 +93,7 @@ app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
   // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
   setTimeout(() => {
     res.send({ status: ok, statusCode: 200 });
-  }, 1500);
+  }, responseTimeout);
 });
 
 /**
@@ -127,7 +129,7 @@ app.post('/closeMeeting', async (req, res) => {
   // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
   setTimeout(() => {
     res.send({ status: ok, statusCode: 200, body: { lastApprovedAgenda: { id: lastApprovedAgenda.id } } });
-  }, 1500);
+  }, responseTimeout);
 });
 
 /**
@@ -192,7 +194,7 @@ app.post('/deleteAgenda', async (req, res) => {
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting.agendas from cache)
     setTimeout(() => {
       res.send({ status: ok, statusCode: 200 });
-    }, 1500);
+    }, responseTimeout);
   } catch (e) {
     // TODO KAS-2452 do we want a try catch on each of these API calls ?
     res.send({ status: "fail", statusCode: 500, error: "something went wrong while deleting the agenda", e });
@@ -230,5 +232,5 @@ app.post('/createDesignAgenda', async (req, res) => {
   // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
   setTimeout(() => {
     res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
-  }, 1500);
+  }, responseTimeout);
 });
