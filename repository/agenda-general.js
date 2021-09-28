@@ -15,7 +15,7 @@ const getAgendaURI = async (newAgendaId) => {
    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
-   SELECT ?agenda WHERE {
+   SELECT DISTINCT ?agenda WHERE {
     ?agenda a besluitvorming:Agenda ;
       mu:uuid ${sparqlEscapeString(newAgendaId)} .
    }

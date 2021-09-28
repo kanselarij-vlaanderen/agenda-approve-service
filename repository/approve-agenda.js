@@ -20,7 +20,7 @@ const createNewAgenda = async (meetingUuid, oldAgendaURI) => {
   const newAgendaUri = AGENDA_RESOURCE_BASE + newAgendaUuid;
   const creationDate = new Date();
   const serialNumbers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const { sessionUri, agendaCount, zittingDate } = await zittingInfo(meetingUuid);
+  const { meetingUri, agendaCount, zittingDate } = await zittingInfo(meetingUuid);
   const serialNumber = serialNumbers[agendaCount] || agendaCount;
   const title = `Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}`;
   const query = `
@@ -38,7 +38,7 @@ INSERT DATA {
     dct:modified ${sparqlEscapeDateTime(creationDate)} ;
     dct:title ${sparqlEscapeString(title)} ;
     besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
-    besluitvorming:isAgendaVoor ${sparqlEscapeUri(sessionUri)} ;
+    besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingUri)} ;
     besluitvorming:volgnummer ${sparqlEscapeString(serialNumber)} ;
     prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
 }`;
@@ -66,7 +66,7 @@ GROUP BY ?zitting ?zittingDate`;
   });
   const firstResult = data.results.bindings[0] || {};
   return {
-    sessionUri: firstResult.zitting.value,
+    meetingUri: firstResult.zitting.value,
     zittingDate: firstResult.zittingDate.value,
     agendaCount: parseInt(firstResult.agendacount.value)
   };
@@ -160,12 +160,12 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     console.log(`Agendaitems list exceeds the batchSize of ${batchSize}, splitting into batches`);
     targetsToDo = targets.splice(0, batchSize);
   }
-  const ignoredPropertiesLeft = [
+  const ignoredObjects = [
     'http://mu.semte.ch/vocabularies/core/uuid',
     'http://www.w3.org/ns/prov#wasRevisionOf',
     'http://data.vlaanderen.be/ns/besluitvorming#aanmaakdatum' // TODO: not part of besluitvorming namespace
   ];
-  const movePropertiesLeft = `
+  const copyObjects = `
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
   INSERT { 
@@ -176,28 +176,28 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     }
     ?target prov:wasRevisionOf ?previousURI .
     ?previousURI ?p ?o .
-    FILTER(?p NOT IN (${ignoredPropertiesLeft.map(sparqlEscapeUri).join(', ')}))
+    FILTER(?p NOT IN (${ignoredObjects.map(sparqlEscapeUri).join(', ')}))
   }`;
-  await mu.update(movePropertiesLeft);
+  await mu.update(copyObjects);
 
-  const ignoredPropertiesRight = [
+  const ignoredSubjects = [
     'http://purl.org/dc/terms/hasPart',
     'http://www.w3.org/ns/prov#wasRevisionOf'
   ];
-  const movePropertiesRight = `
+  const copySubjects = `
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
   INSERT { 
-    ?o ?p ?target .
+    ?s ?p ?target .
   } WHERE {
     VALUES (?target) {
       (${targets.map(sparqlEscapeUri).join(')\n      (')})
     }
     ?target prov:wasRevisionOf ?previousURI .
-    ?o ?p ?previousURI .
-    FILTER(?p NOT IN (${ignoredPropertiesRight.map(sparqlEscapeUri).join(', ')}))
+    ?s ?p ?previousURI .
+    FILTER(?p NOT IN (${ignoredSubjects.map(sparqlEscapeUri).join(', ')}))
   }`;
-  await mu.update(movePropertiesRight);
+  await mu.update(copySubjects);
 
   return updatePropertiesOnAgendaItemsBatched(targetsToDo);
 };

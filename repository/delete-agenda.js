@@ -104,7 +104,7 @@ const deleteAgendaActivity = async (agendaitemUri) => {
   PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
 
   DELETE {
-    ?subcase ext:isAangevraagdVoor ?session .
+    ?subcase ext:isAangevraagdVoor ?meeting .
     ?activity a besluitvorming:Agendering .
     ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
     ?activity besluitvorming:genereertAgendapunt ${sparqlEscapeUri(agendaitemUri)} . 
@@ -112,7 +112,7 @@ const deleteAgendaActivity = async (agendaitemUri) => {
   }
   WHERE {
     ?subcase a dossier:Procedurestap .
-    OPTIONAL { ?subcase ext:isAangevraagdVoor ?session  .}
+    OPTIONAL { ?subcase ext:isAangevraagdVoor ?meeting  .}
     ?activity a besluitvorming:Agendering .
     ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
     ?activity besluitvorming:genereertAgendapunt ${sparqlEscapeUri(agendaitemUri)} .
@@ -142,7 +142,7 @@ const cleanupNewAgendaitems = async (deleteAgendaURI) => {
 
   SELECT DISTINCT ?agendapunt WHERE {
     ?subcase a dossier:Procedurestap .
-    OPTIONAL { ?subcase ext:isAangevraagdVoor ?session .}
+    OPTIONAL { ?subcase ext:isAangevraagdVoor ?meeting .}
     OPTIONAL { 
       ?activity besluitvorming:genereertAgendapunt ?agendapunt .
       ?activity a besluitvorming:Agendering .
