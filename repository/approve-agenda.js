@@ -230,35 +230,28 @@ INSERT DATA {
 };
 
 const enforceFormalOkRules = async (agendaUri) => {
-  console.log('****************** enforcing formally ok rules ******************');
-  let count = 0;
+  console.debug('****************** enforcing formally ok rules ******************');
   // Remove new agendaitems that were not "formally ok" from agenda
-  count += await removeAgendaItems(agendaUri);
+  await removeAgendaItems(agendaUri);
   // Rollback approved agendaitems that were not "formally ok" from agenda
-  count += await rollbackAgendaitems(agendaUri);
+  await rollbackAgendaitems(agendaUri);
   // Optional: only if items were removed or rolled back (in case of priority also rolled back)
-  if (count) {
-    // Sort the agendaitems if needed
-    await sortAgendaitemsOnAgenda(agendaUri);
-  }
-  return count;
+  // Sort the agendaitems on the approved agenda (will do nothing if not needed)
+  await sortAgendaitemsOnAgenda(agendaUri, null);
 }
 
 const removeAgendaItems = async (agendaUri) => {
-  console.log('****************** formally ok rules - remove new items ******************');
+  console.debug('****************** formally ok rules - remove new items ******************');
   const agendaitemUris = (await agendaGeneral.selectNewAgendaItemsNotFormallyOk(agendaUri)).map(res => res.agendaitem);
-  const count = agendaitemUris.length;
 
   for (const agendaItemUri of agendaitemUris) {
     await deleteAgendaitem(agendaItemUri);
   }
-  return count;
 }
 
 const rollbackAgendaitems = async (oldAgendaUri) => {
-  console.log('****************** formally ok rules - rollback approved items ******************');
+  console.debug('****************** formally ok rules - rollback approved items ******************');
   const agendaitemUris = (await agendaGeneral.selectApprovedAgendaItemsNotFormallyOk(oldAgendaUri)).map(res => res.agendaitem);
-  const count = agendaitemUris.length;
 
   for (const oldVerUri of agendaitemUris) {
     const rollbackDeleteQuery = `
@@ -307,44 +300,42 @@ INSERT {
     await mu.update(rollbackDeleteQuery);
     await mu.update(rollbackInsertQuery);
   }
-  return count;
 };
 
-const sortAgendaitemsOnAgenda = async (agendaUri) => {
-  console.log('****************** formally ok rules - sorting agendaitems on agenda ******************');
+const sortAgendaitemsOnAgenda = async (agendaUri, newAgendaitems) => {
+  console.debug('****************** formally ok rules - sorting agendaitems on agenda ******************');
   const agendaitems = await agendaGeneral.selectAgendaItemsForSorting(agendaUri);
+
+  // If we have newAgendaitems on this agenda, it means they have to be sorted to the bottom of the list
+  // so we find them and push them to the end of the array
+  if (newAgendaitems) {
+    const itemsToShift = agendaitems.filter(agendaitem => newAgendaitems.find(item => agendaitem.agendaitem == item));
+    itemsToShift.map((agendaitem) => {
+      agendaitems.push(agendaitems.splice(agendaitems.indexOf(agendaitem), 1)[0]);
+    });
+  }
+  // .filter keeps reference to the same objects
   const notes = agendaitems.filter(agendaitem => !agendaitem.isRemark);
   const announcements = agendaitems.filter(agendaitem => agendaitem.isRemark);
-  const targetsToUpdate = [];
 
-  notes.map((agendaitem, index) => {
-    if (agendaitem.priority !== index + 1) {
-      agendaitem.newPriority = index + 1;
-      targetsToUpdate.push(agendaitem);
-    }
-  });
+  // for both lists, we have to fill in any gaps in numbering made by rollbacks or deletes
+  reOrderAgendaitemNumbers(notes);
+  reOrderAgendaitemNumbers(announcements);
 
-  announcements.map((agendaitem, index) => {
-    if (agendaitem.priority !== index + 1) {
-      agendaitem.newPriority = index + 1;
-      targetsToUpdate.push(agendaitem);
-    }
-  });
-
-  for (const target of targetsToUpdate) {
-    // only update if update is needed
-    if (target.priority !== target.newPriority) {
+  for (const target of agendaitems) {
+    // only update if update is needed, should do nothing in a happy flow scenario
+    if (target.number !== target.newNumber) {
       const query = `
       PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   
       DELETE {
-        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?priority .
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?number .
       }
       INSERT {
-        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ${sparqlEscapeInt(target.newPriority)} .
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ${sparqlEscapeInt(target.newNumber)} .
       }
       WHERE {
-        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?priority .
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?number .
       }
       `;
       await mu.update(query);
@@ -354,34 +345,22 @@ const sortAgendaitemsOnAgenda = async (agendaUri) => {
 };
 
 const sortNewAgenda = async (agendaUri) => {
-  console.log('****************** formally ok rules - sorting agendaitems on new agenda ******************');
+  console.debug('****************** formally ok rules - sorting agendaitems on new agenda ******************');
   const newAgendaitems = (await agendaGeneral.selectNewAgendaItemsNotFormallyOk(agendaUri));
-  newAgendaitems.map((agendaitem, index) => {
-    agendaitem.newPriority = index + 999;
-  });
-  for (const target of newAgendaitems) {
-    const query = `
-      PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-
-      DELETE {
-        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?priority .
-      }
-      INSERT {
-        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ${sparqlEscapeInt(target.newPriority)} .
-      }
-      WHERE {
-        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?priority .
-      }
-      `;
-    await mu.update(query);
-  }
 
   // If we had any targets, sort the agendaitems of the entire agenda
   if (newAgendaitems) {
-    await sortAgendaitemsOnAgenda(agendaUri);
+    await sortAgendaitemsOnAgenda(agendaUri, newAgendaitems);
   }
 };
 
+const reOrderAgendaitemNumbers = (array) => {
+  array.map((agendaitem, index) => {
+    if (agendaitem.number !== index + 1) {
+      agendaitem.newNumber = index + 1;
+    }
+  });
+}
 
 export {
   createNewAgenda,
