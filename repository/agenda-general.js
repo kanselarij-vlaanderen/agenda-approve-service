@@ -10,21 +10,24 @@ const AGENDA_STATUS_APPROVED = 'http://kanselarij.vo.data.gift/id/agendastatus/f
 const AGENDA_STATUS_CLOSED = 'http://kanselarij.vo.data.gift/id/agendastatus/f06f2b9f-b3e5-4315-8892-501b00650101';
 const AGENDAITEM_FORMALLY_OK = 'http://kanselarij.vo.data.gift/id/concept/goedkeurings-statussen/CC12A7DB-A73A-4589-9D53-F3C2F4A40636';
 
-const getAgendaURI = async (newAgendaId) => {
+const getAgendaURI = async (agendaId) => {
   const query = `
    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
    SELECT DISTINCT ?agenda WHERE {
     ?agenda a besluitvorming:Agenda ;
-      mu:uuid ${sparqlEscapeString(newAgendaId)} .
+      mu:uuid ${sparqlEscapeString(agendaId)} .
    }
  `;
 
   const data = await mu.query(query).catch(err => {
     console.error(err);
   });
-  return data.results.bindings[0].agenda.value;
+  if (data.results.bindings.length) {
+    return data.results.bindings[0].agenda.value;
+  }
+  throw new Error(`Agenda with id ${agendaId} not found`);
 };
 
 /**

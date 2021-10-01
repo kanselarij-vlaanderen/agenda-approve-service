@@ -19,7 +19,11 @@ const getMeetingURI = async (meetingId) => {
   const data = await mu.query(query).catch(err => {
     console.error(err);
   });
-  return data.results.bindings[0].meeting.value;
+  if (data.results.bindings.length) {
+    return data.results.bindings[0].meeting.value;
+  }
+  throw new Error(`Meeting with id ${meetingId} not found`);
+
 };
 
 const closeMeeting = async (meetingURI, agendaURI) => {

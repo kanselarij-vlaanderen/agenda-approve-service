@@ -37,24 +37,31 @@ app.use(errorHandler);
  */
 app.post('/approveAgenda', async (req, res) => {
   const meetingId = req.body.meetingId;
-  if (!meetingId) {
-    res.send({ status: "fail", statusCode: 400, error: "Meeting id is missing, approval of agenda failed" });
-    return;
+  try {
+    if (!meetingId) {
+      throw new Error('Meeting id required.');
+    }
+    const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
+    const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
+    if (!designAgendaURI) {
+      throw new Error(`There is no designagenda to approve on meeting with id ${meetingId}`);
+    }
+    await agendaGeneral.setAgendaStatusApproved(designAgendaURI);
+    // rename the recently approved design agenda for clarity
+    const approvedAgendaURI = designAgendaURI;
+    const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, approvedAgendaURI);
+    await agendaApproval.copyAgendaItems(approvedAgendaURI, newAgendaURI);
+    // await agendaApproval.storeAgendaItemNumbers(oldAgendaURI); // TODO: document what this is for. Otherwise remove.
+    await agendaApproval.enforceFormalOkRules(approvedAgendaURI);
+    await agendaApproval.sortNewAgenda(newAgendaURI);
+    // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
+    setTimeout(() => {
+      res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
+    }, responseTimeout);
+  } catch (err) {
+    console.error(err);
+    res.send({error: { code: 500, title: 'Approve agenda failed.', detail: (err.message || 'Something went wrong during the agenda approval.')}});
   }
-  const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
-  const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
-  await agendaGeneral.setAgendaStatusApproved(designAgendaURI);
-  // rename the recently approved design agenda for clarity
-  const approvedAgendaURI = designAgendaURI;
-  const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, approvedAgendaURI);
-  await agendaApproval.copyAgendaItems(approvedAgendaURI, newAgendaURI);
-  // await agendaApproval.storeAgendaItemNumbers(oldAgendaURI); // TODO: document what this is for. Otherwise remove.
-  await agendaApproval.enforceFormalOkRules(approvedAgendaURI);
-  await agendaApproval.sortNewAgenda(newAgendaURI);
-  // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
-  setTimeout(() => {
-    res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
-  }, responseTimeout);
 });
 
 /**
@@ -76,22 +83,29 @@ app.post('/approveAgenda', async (req, res) => {
  */
 app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
   const meetingId = req.body.meetingId;
-  if (!meetingId) {
-    res.send({ status: "fail", statusCode: 400, error: "Meeting id is missing, approval and closing of agenda failed" });
-    return;
-  }
-  const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
-  const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
-  await agendaGeneral.setAgendaStatusClosed(designAgendaURI);
-  // rename the recently closed design agenda for clarity
-  const closedAgendaURI = designAgendaURI;
-  await meetingGeneral.closeMeeting(meetingURI, closedAgendaURI);
-  await agendaApproval.enforceFormalOkRules(closedAgendaURI);
+  try {
+    if (!meetingId) {
+      throw new Error('Meeting id required.');
+    }
+    const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
+    const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
+    if (!designAgendaURI) {
+      throw new Error(`There is no designagenda to approve on meeting with id ${meetingId}`);
+    }
+    await agendaGeneral.setAgendaStatusClosed(designAgendaURI);
+    // rename the recently closed design agenda for clarity
+    const closedAgendaURI = designAgendaURI;
+    await meetingGeneral.closeMeeting(meetingURI, closedAgendaURI);
+    await agendaApproval.enforceFormalOkRules(closedAgendaURI);
 
-  // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
-  setTimeout(() => {
-    res.send({ status: ok, statusCode: 200 });
-  }, responseTimeout);
+    // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
+    setTimeout(() => {
+      res.send({ status: ok, statusCode: 200 });
+    }, responseTimeout);
+  } catch (err) {
+    console.error(err);
+    res.send({error: { code: 500, title: 'Approve and close agenda failed.', detail: (err.message || 'Something went wrong during the agenda approval and closing of the meeting.')}});
+  }
 });
 
 /**
@@ -110,24 +124,31 @@ app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
  */
 app.post('/closeMeeting', async (req, res) => {
   const meetingId = req.body.meetingId;
-  if (!meetingId) {
-    res.send({ status: "fail", statusCode: 400, error: "meeting id is missing, closing of meeting failed" });
-    return;
-  }
-  const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
-  const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
-  const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
-  await agendaGeneral.setAgendaStatusClosed(lastApprovedAgenda.uri);
-  await meetingGeneral.closeMeeting(meetingURI, lastApprovedAgenda.uri);
-  await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO workaround for cache (deleting agenda with only an approval item)
-  if (designAgendaURI) {
-    await agendaDeletion.deleteAgendaAndAgendaitems(designAgendaURI);
-  }
+  try {
+    if (!meetingId) {
+      throw new Error('Meeting id required.');
+    }
+    const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
+    const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
+    const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
+    if (!lastApprovedAgenda) {
+      throw new Error(`There should be at least 1 approved Agenda on meeting with id ${meetingId}`);
+    }
+    await agendaGeneral.setAgendaStatusClosed(lastApprovedAgenda.uri);
+    await meetingGeneral.closeMeeting(meetingURI, lastApprovedAgenda.uri);
+    await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO workaround for cache (deleting agenda with only an approval item)
+    if (designAgendaURI) {
+      await agendaDeletion.deleteAgendaAndAgendaitems(designAgendaURI);
+    }
 
-  // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
-  setTimeout(() => {
-    res.send({ status: ok, statusCode: 200, body: { lastApprovedAgenda: { id: lastApprovedAgenda.id } } });
-  }, responseTimeout);
+    // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
+    setTimeout(() => {
+      res.send({ status: ok, statusCode: 200, body: { lastApprovedAgenda: { id: lastApprovedAgenda.id } } });
+    }, responseTimeout);
+  } catch (err) {
+    console.error(err);
+    res.send({error: { code: 500, title: 'Close meeting failed.', detail: (err.message || 'Something went wrong during the closing of the meeting.')}});
+  }
 });
 
 /**
@@ -144,19 +165,29 @@ app.post('/closeMeeting', async (req, res) => {
  */
 app.post('/reopenPreviousAgenda', async (req, res) => {
   const meetingId = req.body.meetingId;
-  const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
+  try {
+    if (!meetingId) {
+      throw new Error('Meeting id required.');
+    }
+    const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
+    const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
+    const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
+    if (!lastApprovedAgenda) {
+      throw new Error(`There should be at least 1 approved Agenda on meeting with id ${meetingId}`);
+    }
+    await agendaGeneral.setAgendaStatusDesign(lastApprovedAgenda.uri);
 
-  const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
-  const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
-  await agendaGeneral.setAgendaStatusDesign(lastApprovedAgenda.uri);
-
-  // current frontend checks only allow this action if design agenda is present
-  // but there is no reason for this, we should be able to reopen an approved agenda without a designAgenda (same flow, less steps)
-  if (designAgendaURI) {
-    await agendaDeletion.deleteAgendaAndAgendaitems(designAgendaURI);
+    // current frontend checks only allow this action if design agenda is present
+    // but there is no reason for this, we should be able to reopen an approved agenda without a designAgenda (same flow, less steps)
+    if (designAgendaURI) {
+      await agendaDeletion.deleteAgendaAndAgendaitems(designAgendaURI);
+    }
+    // timeout doesn't seem needed in this case (because currently, there is always a previous agenda, the change in route is enough delay)
+    res.send({ status: ok, statusCode: 200, body: { reopenedAgenda: { id: lastApprovedAgenda.id } } });
+  } catch (err) {
+    console.error(err);
+    res.send({error: { code: 500, title: 'Reopen previous agenda failed.', detail: (err.message || 'Something went wrong during the reopening of the agenda.')}});
   }
-  // timeout doesn't seem needed in this case (because currently, there is always a previous agenda, the change in route is enough delay)
-  res.send({ status: ok, statusCode: 200, body: { reopenedAgenda: { id: lastApprovedAgenda.id } } });
 });
 
 /**
@@ -173,14 +204,19 @@ app.post('/reopenPreviousAgenda', async (req, res) => {
  * - delete the meeting
  */
 app.post('/deleteAgenda', async (req, res) => {
+  // Technically we could work with only meetingId, but we check if the agenda still exists to be safe + concurrency risk
   const meetingId = req.body.meetingId;
-  if (!meetingId) {
-    res.send({ status: "fail", statusCode: 400, error: "Meeting id is missing, deletion of agenda failed" });
-    return;
-  }
+  const agendaId = req.body.agendaId;
   try {
+    if (!meetingId || !agendaId) {
+      throw new Error('Meeting and agenda id is required.');
+    }
     const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
+    const agendaURIToCheck = await agendaGeneral.getAgendaURI(agendaId);
     const agendaURI = await meetingGeneral.getLastestAgenda(meetingURI);
+    if (agendaURI !== agendaURIToCheck) {
+      throw new Error(`Agenda with id ${agendaId} is not the last agenda.`);
+    }
     await agendaDeletion.deleteAgendaAndAgendaitems(agendaURI);
     // We get the last approved agenda after deletion, because it is possible to delete approved agendas
     const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
@@ -193,15 +229,17 @@ app.post('/deleteAgenda', async (req, res) => {
     setTimeout(() => {
       res.send({ status: ok, statusCode: 200 });
     }, responseTimeout);
-  } catch (e) {
-    // TODO KAS-2452 do we want a try catch on each of these API calls ?
-    res.send({ status: "fail", statusCode: 500, error: "something went wrong while deleting the agenda", e });
+  } catch (err) {
+    console.error(err);
+    res.send({error: { code: 500, title: 'Delete agenda failed.', detail: (err.message || 'Something went wrong during the deletion of the agenda.')}});
   }
 });
 
   /**
  * createDesignAgenda
- * 
+ *
+ * * NOTE this API endpoint is also used to reopen the meeting
+ *
  * @param meetingId: id of the meeting
  * 
  * actions on meeting:
@@ -216,19 +254,29 @@ app.post('/deleteAgenda', async (req, res) => {
  */
 app.post('/createDesignAgenda', async (req, res) => {
   const meetingId = req.body.meetingId;
-  if (!meetingId) {
-    res.send({ status: "fail", statusCode: 400, error: "Meeting id is missing, creation of design agenda failed" });
-    return;
-  }
-  const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
-  await meetingGeneral.reopenMeeting(meetingURI);
-  const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
-  await agendaGeneral.setAgendaStatusApproved(lastApprovedAgenda.uri);
-  const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, lastApprovedAgenda.uri);
-  await agendaApproval.copyAgendaItems(lastApprovedAgenda.uri, newAgendaURI);
+  try {
+    if (!meetingId) {
+      throw new Error('Meeting id required.');
+    }
+    const meetingURI = await meetingGeneral.getMeetingURI(meetingId);
+    const designAgendaURI = await meetingGeneral.getDesignAgenda(meetingURI);
+    if (designAgendaURI) {
+      throw new Error(`Meeting with id ${meetingId} already has a design agenda, only 1 is allowed.`);
+    }
+    // Reopen meeting is not needed when adding a design agenda after manual deletion of current one
+    // But the triples inserted/deleted don't have any negative effects
+    await meetingGeneral.reopenMeeting(meetingURI);
+    const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
+    await agendaGeneral.setAgendaStatusApproved(lastApprovedAgenda.uri);
+    const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, lastApprovedAgenda.uri);
+    await agendaApproval.copyAgendaItems(lastApprovedAgenda.uri, newAgendaURI);
 
-  // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
-  setTimeout(() => {
-    res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
-  }, responseTimeout);
+    // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
+    setTimeout(() => {
+      res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
+    }, responseTimeout);
+  } catch (err) {
+    console.error(err);
+    res.send({error: { code: 500, title: 'Create designagenda failed.', detail: (err.message || 'Something went wrong during the creation of the designagenda.')}});
+  }
 });
