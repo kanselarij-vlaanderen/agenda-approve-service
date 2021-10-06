@@ -72,66 +72,6 @@ GROUP BY ?meeting ?meetingDate`;
   };
 };
 
-const storeAgendaItemNumbers = async (agendaUri) => {
-  const maxAgendaItemNumberSoFar = await getHighestAgendaItemNumber(agendaUri);
-  let query = `
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-
-SELECT ?agendaItem WHERE {
-    ${sparqlEscapeUri(agendaUri)} dct:hasPart ?agendaItem .
-    OPTIONAL {
-        ?agendaItem ext:prioriteit ?priority .
-    }
-    BIND(IF(BOUND(?priority), ?priority, 1000000) AS ?priorityOrMax)
-    FILTER NOT EXISTS {
-        ?agendaItem ext:agendaItemNumber ?number .
-    }
-}
-ORDER BY ?priorityOrMax`;
-  const sortedAgendaItemsToName = await mu.query(query).catch(err => {
-    console.error(err);
-  });
-
-  const triples = [];
-  sortedAgendaItemsToName.results.bindings.map((binding, index) => {
-    triples.push(`${sparqlEscapeUri(binding.agendaItem.value)} ext:agendaItemNumber ${sparqlEscapeInt(maxAgendaItemNumberSoFar + index)} .`);
-  });
-  if (triples.length < 1) {
-    return;
-  }
-  query = `
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-
-INSERT DATA {
-  ${triples.join('\n        ')}
-}`;
-  await mu.update(query).catch(err => {
-    console.log(err);
-  });
-};
-
-const getHighestAgendaItemNumber = async (agendaUri) => {
-  // TODO: This query seems needlessly complex. Why the "othermeeting" and comparing by year?
-  const query = `
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-
-SELECT (MAX(?number) as ?max) WHERE {
-    ${sparqlEscapeUri(agendaUri)} besluitvorming:isAgendaVoor ?meeting .
-    ?meeting besluit:geplandeStart ?meetingDate .
-    ?othermeeting besluit:geplandeStart ?otherMeetingDate .
-    FILTER(YEAR(?meetingDate) = YEAR(?otherMeetingDate))
-    ?otherAgenda besluitvorming:isAgendaVoor ?othermeeting .
-    ?otherAgenda dct:hasPart ?agendaItem .
-    ?agendaItem ext:agendaItemNumber ?number .
-}`;
-  const response = await mu.query(query);
-  return parseInt(((response.results.bindings[0] || {}).max || {}).value || 0);
-};
-
 const updatePropertiesOnAgendaItems = async function (agendaUri) {
   const selectTargets = `
 PREFIX prov: <http://www.w3.org/ns/prov#>
@@ -364,7 +304,6 @@ const reOrderAgendaitemNumbers = (array) => {
 
 export {
   createNewAgenda,
-  storeAgendaItemNumbers,
   copyAgendaItems,
   rollbackAgendaitems,
   enforceFormalOkRules,

@@ -52,7 +52,6 @@ app.post('/approveAgenda', async (req, res) => {
     const approvedAgendaURI = designAgendaURI;
     const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, approvedAgendaURI);
     await agendaApproval.copyAgendaItems(approvedAgendaURI, newAgendaURI);
-    // await agendaApproval.storeAgendaItemNumbers(oldAgendaURI); // TODO: document what this is for. Otherwise remove.
     await agendaApproval.enforceFormalOkRules(approvedAgendaURI);
     await agendaApproval.sortNewAgenda(newAgendaURI);
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
