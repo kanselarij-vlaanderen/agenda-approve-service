@@ -193,48 +193,61 @@ const rollbackAgendaitems = async (oldAgendaUri) => {
   console.debug('****************** formally ok rules - rollback approved items ******************');
   const agendaitemUris = (await agendaGeneral.selectApprovedAgendaItemsNotFormallyOk(oldAgendaUri)).map(res => res.agendaitem);
 
+  /* During rollback, we don't want to delete / insert: 
+    objects:
+    - the type, query for besluit:Agendapunt would fail after
+    - the uuid, we want to keep the same object, just empty it and refill it with old values
+    - the wasRevisionOf, the link to previous agendaitem is kept
+    - the priority, because when multiple items are manually moved and only 1 gets rolled back, we get double numbers. (it makes sense, but hard to explain)
+    subjects:
+    - the relation to the agenda this version of the agendaitem is linked to
+    - the link to the next version of agendaitem (if any)
+    - the link to agenda-activity (delete and insert could be allowed, should be the same relation)
+  */
+  const ignoredObjects = [
+    'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+    'http://mu.semte.ch/vocabularies/core/uuid',
+    'http://www.w3.org/ns/prov#wasRevisionOf',
+    'http://mu.semte.ch/vocabularies/ext/prioriteit'
+  ];
+  const ignoredSubjects = [
+    'http://purl.org/dc/terms/hasPart',
+    'http://www.w3.org/ns/prov#wasRevisionOf',
+    'http://data.vlaanderen.be/ns/besluitvorming#genereertAgendapunt'
+  ];
+
   for (const oldVerUri of agendaitemUris) {
     const rollbackDeleteQuery = `
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-PREFIX prov: <http://www.w3.org/ns/prov#>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 
 DELETE {
-  ${sparqlEscapeUri(oldVerUri)} ?p ?rightTarget .
-  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
+  ${sparqlEscapeUri(oldVerUri)} ?p ?object .
+  ?subject ?pp ${sparqlEscapeUri(oldVerUri)} .
 } WHERE {
   ${sparqlEscapeUri(oldVerUri)} a besluit:Agendapunt ;
-  ?p ?rightTarget .
-  FILTER(?p NOT IN (rdf:type, mu:uuid, prov:wasRevisionOf, ext:prioriteit) )
+  ?p ?object .
+  FILTER(?p NOT IN (${ignoredObjects.map(sparqlEscapeUri).join(', ')}))
 
-  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
-  FILTER(?pp NOT IN (dct:hasPart, besluitvorming:genereertAgendapunt, prov:wasRevisionOf ))
+  ?subject ?pp ${sparqlEscapeUri(oldVerUri)} .
+  FILTER(?pp NOT IN (${ignoredSubjects.map(sparqlEscapeUri).join(', ')}))
 }
 `;
 
     const rollbackInsertQuery = `
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 PREFIX prov: <http://www.w3.org/ns/prov#>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 INSERT {
-  ${sparqlEscapeUri(oldVerUri)} ?p ?rightTarget .
-  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
+  ${sparqlEscapeUri(oldVerUri)} ?p ?object .
+  ?subject ?pp ${sparqlEscapeUri(oldVerUri)} .
 } WHERE {
   ${sparqlEscapeUri(oldVerUri)} a besluit:Agendapunt ;
   prov:wasRevisionOf ?previousAgendaitem .
-  ?previousAgendaitem ?p ?rightTarget .
-  FILTER(?p NOT IN (rdf:type, mu:uuid, prov:wasRevisionOf) )
+  ?previousAgendaitem ?p ?object .
+  FILTER(?p NOT IN (${ignoredObjects.map(sparqlEscapeUri).join(', ')}))
 
-  ?leftTarget ?pp ?previousAgendaitem .
-  FILTER(?pp NOT IN (dct:hasPart, besluitvorming:genereertAgendapunt, prov:wasRevisionOf ))
+  ?subject ?pp ?previousAgendaitem .
+  FILTER(?pp NOT IN (${ignoredSubjects.map(sparqlEscapeUri).join(', ')}))
 }
 `;
     await mu.update(rollbackDeleteQuery);
