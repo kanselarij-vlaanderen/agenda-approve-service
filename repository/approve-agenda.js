@@ -20,9 +20,9 @@ const createNewAgenda = async (meetingUuid, oldAgendaURI) => {
   const newAgendaUri = AGENDA_RESOURCE_BASE + newAgendaUuid;
   const creationDate = new Date();
   const serialNumbers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const { meetingUri, agendaCount, zittingDate } = await zittingInfo(meetingUuid);
+  const { meetingUri, agendaCount, meetingDate } = await meetingInfo(meetingUuid);
   const serialNumber = serialNumbers[agendaCount] || agendaCount;
-  const title = `Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}`;
+  const title = `Agenda ${serialNumber} voor zitting ${moment(meetingDate).format('D-M-YYYY')}`;
   const query = `
 PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -48,26 +48,26 @@ INSERT DATA {
   return [newAgendaUuid, newAgendaUri];
 };
 
-const zittingInfo = async (zittingUuid) => {
+const meetingInfo = async (meetingUuid) => {
   const query = `
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
-SELECT ?zitting ?zittingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
-    ?zitting a besluit:Vergaderactiviteit ;
-        besluit:geplandeStart ?zittingDate ;
-        mu:uuid ${sparqlEscapeString(zittingUuid)} .
-    ?agenda besluitvorming:isAgendaVoor ?zitting .
+SELECT ?meeting ?meetingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
+    ?meeting a besluit:Vergaderactiviteit ;
+        besluit:geplandeStart ?meetingDate ;
+        mu:uuid ${sparqlEscapeString(meetingUuid)} .
+    ?agenda besluitvorming:isAgendaVoor ?meeting .
 }
-GROUP BY ?zitting ?zittingDate`;
+GROUP BY ?meeting ?meetingDate`;
   const data = await mu.query(query).catch(err => {
     console.error(err);
   });
   const firstResult = data.results.bindings[0] || {};
   return {
-    meetingUri: firstResult.zitting.value,
-    zittingDate: firstResult.zittingDate.value,
+    meetingUri: firstResult.meeting.value,
+    meetingDate: firstResult.meetingDate.value,
     agendaCount: parseInt(firstResult.agendacount.value)
   };
 };
@@ -112,7 +112,7 @@ INSERT DATA {
 };
 
 const getHighestAgendaItemNumber = async (agendaUri) => {
-  // TODO: This query seems needlessly complex. Why the "otherzitting" and comparing by year?
+  // TODO: This query seems needlessly complex. Why the "othermeeting" and comparing by year?
   const query = `
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
@@ -120,11 +120,11 @@ PREFIX dct: <http://purl.org/dc/terms/>
 PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 
 SELECT (MAX(?number) as ?max) WHERE {
-    ${sparqlEscapeUri(agendaUri)} besluitvorming:isAgendaVoor ?zitting .
-    ?zitting besluit:geplandeStart ?zittingDate .
-    ?otherZitting besluit:geplandeStart ?otherZittingDate .
-    FILTER(YEAR(?zittingDate) = YEAR(?otherZittingDate))
-    ?otherAgenda besluitvorming:isAgendaVoor ?otherZitting .
+    ${sparqlEscapeUri(agendaUri)} besluitvorming:isAgendaVoor ?meeting .
+    ?meeting besluit:geplandeStart ?meetingDate .
+    ?othermeeting besluit:geplandeStart ?otherMeetingDate .
+    FILTER(YEAR(?meetingDate) = YEAR(?otherMeetingDate))
+    ?otherAgenda besluitvorming:isAgendaVoor ?othermeeting .
     ?otherAgenda dct:hasPart ?agendaItem .
     ?agendaItem ext:agendaItemNumber ?number .
 }`;
