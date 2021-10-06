@@ -26,8 +26,6 @@ const deleteAgendaitems = async (deleteAgendaURI) => {
  */
 const deleteAgendaitem = async (agendaItemUri) => {
   const query = `
-  PREFIX dct: <http://purl.org/dc/terms/>
-
   DELETE {
     ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
     ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
@@ -35,7 +33,7 @@ const deleteAgendaitem = async (agendaItemUri) => {
     ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
     ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 /**
@@ -63,7 +61,7 @@ const deleteAgendaitemNewsletterInfo = async (agendaitemUri) => {
       ?newsletter ?p ?o .
     }
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 /**
@@ -86,7 +84,7 @@ const deleteAgendaitemTreatments = async (agendaitemUri) => {
     ?treatment a besluit:BehandelingVanAgendapunt .
     ?treatment ?p ?o .
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 /**
@@ -118,7 +116,7 @@ const deleteAgendaActivity = async (agendaitemUri) => {
     ?activity besluitvorming:genereertAgendapunt ${sparqlEscapeUri(agendaitemUri)} .
     ?activity ?p ?o .
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 /** 
@@ -187,7 +185,7 @@ const deleteAgenda = async (deleteAgendaURI) => {
         ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
       }
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 const deleteAgendaAndAgendaitems = async (agendaURI) => {
