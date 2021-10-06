@@ -8,7 +8,8 @@ import * as agendaApproval from './repository/approve-agenda';
 import * as agendaDeletion from './repository/delete-agenda';
 import * as meetingDeletion from './repository/delete-meeting';
 
-const responseTimeout = process.env.RES_TIMEOUT || 1500;
+
+const cacheClearTimeout = process.env.CACHE_CLEAR_TIMEOUT || 1500;
 
 app.use(bodyParser.json({ type: 'application/*+json' }));
 app.use(errorHandler);
@@ -57,7 +58,7 @@ app.post('/approveAgenda', async (req, res) => {
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
     setTimeout(() => {
       res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
-    }, responseTimeout);
+    }, cacheClearTimeout);
   } catch (err) {
     console.error(err);
     res.send({error: { code: 500, title: 'Approve agenda failed.', detail: (err.message || 'Something went wrong during the agenda approval.')}});
@@ -101,7 +102,7 @@ app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
     setTimeout(() => {
       res.send({ status: ok, statusCode: 200 });
-    }, responseTimeout);
+    }, cacheClearTimeout);
   } catch (err) {
     console.error(err);
     res.send({error: { code: 500, title: 'Approve and close agenda failed.', detail: (err.message || 'Something went wrong during the agenda approval and closing of the meeting.')}});
@@ -144,7 +145,7 @@ app.post('/closeMeeting', async (req, res) => {
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
     setTimeout(() => {
       res.send({ status: ok, statusCode: 200, body: { lastApprovedAgenda: { id: lastApprovedAgenda.id } } });
-    }, responseTimeout);
+    }, cacheClearTimeout);
   } catch (err) {
     console.error(err);
     res.send({error: { code: 500, title: 'Close meeting failed.', detail: (err.message || 'Something went wrong during the closing of the meeting.')}});
@@ -228,7 +229,7 @@ app.post('/deleteAgenda', async (req, res) => {
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting.agendas from cache)
     setTimeout(() => {
       res.send({ status: ok, statusCode: 200 });
-    }, responseTimeout);
+    }, cacheClearTimeout);
   } catch (err) {
     console.error(err);
     res.send({error: { code: 500, title: 'Delete agenda failed.', detail: (err.message || 'Something went wrong during the deletion of the agenda.')}});
@@ -274,7 +275,7 @@ app.post('/createDesignAgenda', async (req, res) => {
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
     setTimeout(() => {
       res.send({ status: ok, statusCode: 200, body: { newAgenda: { id: newAgendaId } } });
-    }, responseTimeout);
+    }, cacheClearTimeout);
   } catch (err) {
     console.error(err);
     res.send({error: { code: 500, title: 'Create designagenda failed.', detail: (err.message || 'Something went wrong during the creation of the designagenda.')}});
