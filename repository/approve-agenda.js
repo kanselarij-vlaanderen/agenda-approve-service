@@ -72,7 +72,7 @@ GROUP BY ?meeting ?meetingDate`;
   };
 };
 
-const updatePropertiesOnAgendaItems = async function (agendaUri) {
+const updatePropertiesOnAgendaitems = async function (agendaUri) {
   const selectTargets = `
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX dct: <http://purl.org/dc/terms/>
@@ -86,10 +86,10 @@ SELECT DISTINCT ?target WHERE {
   const targets = data.results.bindings.map((binding) => {
     return binding.target.value;
   });
-  return updatePropertiesOnAgendaItemsBatched(targets);
+  return updatePropertiesOnAgendaitemsBatched(targets);
 };
 
-const updatePropertiesOnAgendaItemsBatched = async function (targets) {
+const updatePropertiesOnAgendaitemsBatched = async function (targets) {
   if (!targets || targets.length === 0) {
     console.log('all done updating properties of agendaitems');
     return;
@@ -139,13 +139,13 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
   }`;
   await mu.update(copySubjects);
 
-  return updatePropertiesOnAgendaItemsBatched(targetsToDo);
+  return updatePropertiesOnAgendaitemsBatched(targetsToDo);
 };
 
-const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
-  const agendaItemUris = (await agendaGeneral.selectAgendaItems(oldAgendaUri)).map(res => res.agendaitem);
+const copyAgendaitems = async (oldAgendaUri, newAgendaUri) => {
+  const agendaitemUris = (await agendaGeneral.selectAgendaitems(oldAgendaUri)).map(res => res.agendaitem);
 
-  for (const oldVerUri of agendaItemUris) {
+  for (const oldVerUri of agendaitemUris) {
     const uuid = generateUuid();
     const newVerUri = AGENDA_ITEM_RESOURCE_BASE + uuid;
     const creationDate = new Date();
@@ -166,32 +166,21 @@ INSERT DATA {
     // TODO: "aanmaakdatum" not part of besluitvorming namespace
     await mu.update(createNewVer);
   }
-  return updatePropertiesOnAgendaItems(newAgendaUri);
+  return updatePropertiesOnAgendaitems(newAgendaUri);
 };
 
-const enforceFormalOkRules = async (agendaUri) => {
-  console.debug('****************** enforcing formally ok rules ******************');
-  // Remove new agendaitems that were not "formally ok" from agenda
-  await removeAgendaItems(agendaUri);
-  // Rollback approved agendaitems that were not "formally ok" from agenda
-  await rollbackAgendaitems(agendaUri);
-  // Optional: only if items were removed or rolled back (in case of priority also rolled back)
-  // Sort the agendaitems on the approved agenda (will do nothing if not needed)
-  await sortAgendaitemsOnAgenda(agendaUri, null);
-}
-
-const removeAgendaItems = async (agendaUri) => {
+const removeNewAgendaitems = async (agendaUri) => {
   console.debug('****************** formally ok rules - remove new items ******************');
-  const agendaitemUris = (await agendaGeneral.selectNewAgendaItemsNotFormallyOk(agendaUri)).map(res => res.agendaitem);
+  const agendaitemUris = (await agendaGeneral.selectNewAgendaitemsNotFormallyOk(agendaUri)).map(res => res.agendaitem);
 
-  for (const agendaItemUri of agendaitemUris) {
-    await deleteAgendaitem(agendaItemUri);
+  for (const agendaitemUri of agendaitemUris) {
+    await deleteAgendaitem(agendaitemUri);
   }
 }
 
 const rollbackAgendaitems = async (oldAgendaUri) => {
   console.debug('****************** formally ok rules - rollback approved items ******************');
-  const agendaitemUris = (await agendaGeneral.selectApprovedAgendaItemsNotFormallyOk(oldAgendaUri)).map(res => res.agendaitem);
+  const agendaitemUris = (await agendaGeneral.selectApprovedAgendaitemsNotFormallyOk(oldAgendaUri)).map(res => res.agendaitem);
 
   /* During rollback, we don't want to delete / insert: 
     objects:
@@ -257,7 +246,7 @@ INSERT {
 
 const sortAgendaitemsOnAgenda = async (agendaUri, newAgendaitems) => {
   console.debug('****************** formally ok rules - sorting agendaitems on agenda ******************');
-  const agendaitems = await agendaGeneral.selectAgendaItemsForSorting(agendaUri);
+  const agendaitems = await agendaGeneral.selectAgendaitemsForSorting(agendaUri);
 
   // If we have newAgendaitems on this agenda, it means they have to be sorted to the bottom of the list
   // so we find them and push them to the end of the array
@@ -299,7 +288,7 @@ const sortAgendaitemsOnAgenda = async (agendaUri, newAgendaitems) => {
 
 const sortNewAgenda = async (agendaUri) => {
   console.debug('****************** formally ok rules - sorting agendaitems on new agenda ******************');
-  const newAgendaitems = (await agendaGeneral.selectNewAgendaItemsNotFormallyOk(agendaUri));
+  const newAgendaitems = (await agendaGeneral.selectNewAgendaitemsNotFormallyOk(agendaUri));
 
   // If we had any targets, sort the agendaitems of the entire agenda
   if (newAgendaitems) {
@@ -317,8 +306,9 @@ const reOrderAgendaitemNumbers = (array) => {
 
 export {
   createNewAgenda,
-  copyAgendaItems,
+  copyAgendaitems,
+  removeNewAgendaitems,
   rollbackAgendaitems,
-  enforceFormalOkRules,
+  sortAgendaitemsOnAgenda,
   sortNewAgenda,
 };

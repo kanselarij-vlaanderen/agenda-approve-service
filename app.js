@@ -51,8 +51,12 @@ app.post('/approveAgenda', async (req, res) => {
     // rename the recently approved design agenda for clarity
     const approvedAgendaURI = designAgendaURI;
     const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, approvedAgendaURI);
-    await agendaApproval.copyAgendaItems(approvedAgendaURI, newAgendaURI);
-    await agendaApproval.enforceFormalOkRules(approvedAgendaURI);
+    await agendaApproval.copyAgendaitems(approvedAgendaURI, newAgendaURI);
+    // enforcing rules on approved agenda
+    await agendaApproval.removeNewAgendaitems(approvedAgendaURI);
+    await agendaApproval.rollbackAgendaitems(approvedAgendaURI);
+    await agendaApproval.sortAgendaitemsOnAgenda(approvedAgendaURI, null);
+    // enforcing rules on new agenda
     await agendaApproval.sortNewAgenda(newAgendaURI);
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
     setTimeout(() => {
@@ -77,8 +81,8 @@ app.post('/approveAgenda', async (req, res) => {
  * - set the besluitvorming:behandelt to the closed agenda
  * actions on closed agenda:
  * - enforce formally ok rules:
- *    - recurring agendaitems that were not formally OK have to be rolled back
  *    - new agendaitems that were not formally OK have to be removed (cleanup similar to delete agenda)
+ *    - recurring agendaitems that were not formally OK have to be rolled back
  *    - agendaitems have to be sorted to fix gaps in numbering (only if there were new agendaitems that have been deleted)
  */
 app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
@@ -96,7 +100,11 @@ app.post('/approveAgendaAndCloseMeeting', async (req, res) => {
     // rename the recently closed design agenda for clarity
     const closedAgendaURI = designAgendaURI;
     await meetingGeneral.closeMeeting(meetingURI, closedAgendaURI);
-    await agendaApproval.enforceFormalOkRules(closedAgendaURI);
+    // enforcing rules on closed agenda
+    const newAgendaitems = await agendaGeneral.selectNewAgendaitemsNotFormallyOk(closedAgendaURI);
+    await agendaDeletion.cleanupAndDeleteNewAgendaitems(newAgendaitems);
+    await agendaApproval.rollbackAgendaitems(closedAgendaURI);
+    await agendaApproval.sortAgendaitemsOnAgenda(closedAgendaURI, null);
 
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting attributes)
     setTimeout(() => {
@@ -269,7 +277,7 @@ app.post('/createDesignAgenda', async (req, res) => {
     const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
     await agendaGeneral.setAgendaStatusApproved(lastApprovedAgenda.uri);
     const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(meetingId, lastApprovedAgenda.uri);
-    await agendaApproval.copyAgendaItems(lastApprovedAgenda.uri, newAgendaURI);
+    await agendaApproval.copyAgendaitems(lastApprovedAgenda.uri, newAgendaURI);
 
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda status)
     setTimeout(() => {

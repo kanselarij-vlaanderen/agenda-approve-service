@@ -31,12 +31,12 @@ const getAgendaURI = async (agendaId) => {
 };
 
 /**
- * Retrieves the agendaItem uris from an agenda
- * @name selectAgendaItems
+ * Retrieves the agendaitem uris from an agenda
+ * @name selectAgendaitems
  * @function
  * @param {String} agendaURI - The URI of the agenda containing the agendaitem URIs
  */
-const selectAgendaItems = async (agendaURI) => {
+const selectAgendaitems = async (agendaURI) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
 
@@ -51,11 +51,11 @@ const selectAgendaItems = async (agendaURI) => {
 /**
  * Retrieves the agendaitem uris that are not formally ok from an agenda
  * and need to be rolled back to a previous version during approval
- * @name selectApprovedAgendaItemsNotFormallyOk
+ * @name selectApprovedAgendaitemsNotFormallyOk
  * @function
  * @param {String} agendaURI - The URI of the agenda containing the agendaitem URIs
  */
-const selectApprovedAgendaItemsNotFormallyOk = async (agendaURI) => {
+const selectApprovedAgendaitemsNotFormallyOk = async (agendaURI) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
@@ -76,11 +76,11 @@ const selectApprovedAgendaItemsNotFormallyOk = async (agendaURI) => {
 /**
  * Retrieves the new agendaitem uris that are not formally ok from an agenda
  * and need to be removed during approval
- * @name selectNewAgendaItemsNotFormallyOk
+ * @name selectNewAgendaitemsNotFormallyOk
  * @function
  * @param {String} agendaURI - The URI of the agenda containing the agendaitem URIs
  */
-const selectNewAgendaItemsNotFormallyOk = async (agendaURI) => {
+const selectNewAgendaitemsNotFormallyOk = async (agendaURI) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
@@ -99,12 +99,12 @@ const selectNewAgendaItemsNotFormallyOk = async (agendaURI) => {
 };
 
 /**
- * Retrieves the agendaItem uris from an agenda with some extra information
- * @name selectAgendaItemsForSorting
+ * Retrieves the agendaitem uris from an agenda with some extra information
+ * @name selectAgendaitemsForSorting
  * @function
  * @param {String} agendaURI - The URI of the agenda containing the agendaitem URIs
  */
-const selectAgendaItemsForSorting = async (agendaURI) => {
+const selectAgendaitemsForSorting = async (agendaURI) => {
   const query = `
   PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
@@ -159,10 +159,10 @@ const setAgendaStatus = async (agendaURI, statusURI) => {
 
 export {
   getAgendaURI,
-  selectAgendaItems,
-  selectApprovedAgendaItemsNotFormallyOk,
-  selectNewAgendaItemsNotFormallyOk,
-  selectAgendaItemsForSorting,
+  selectAgendaitems,
+  selectApprovedAgendaitemsNotFormallyOk,
+  selectNewAgendaitemsNotFormallyOk,
+  selectAgendaitemsForSorting,
   setAgendaStatusApproved,
   setAgendaStatusClosed,
   setAgendaStatusDesign,

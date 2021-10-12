@@ -1,5 +1,5 @@
 import mu, { sparqlEscapeUri } from 'mu';
-import { selectAgendaItems } from './agenda-general';
+import { selectAgendaitems } from './agenda-general';
 import * as util from '../util/index';
 
 /**
@@ -9,11 +9,11 @@ import * as util from '../util/index';
  * @param {String} deleteAgendaURI - The URI of the agenda to delete the agendaitems from
  */
 const deleteAgendaitems = async (deleteAgendaURI) => {
-  const agendaItemUrisQueryResult = await selectAgendaItems(deleteAgendaURI);
-  const listOfAgendaItemUris = agendaItemUrisQueryResult.map(uri => uri.agendaitem);
+  const agendaitemUrisQueryResult = await selectAgendaitems(deleteAgendaURI);
+  const listOfAgendaitemUris = agendaitemUrisQueryResult.map(uri => uri.agendaitem);
 
-  for (const agendaItemUri of listOfAgendaItemUris) {
-    await deleteAgendaitem(agendaItemUri);
+  for (const agendaitemUri of listOfAgendaitemUris) {
+    await deleteAgendaitem(agendaitemUri);
   }
 };
 
@@ -24,14 +24,14 @@ const deleteAgendaitems = async (deleteAgendaURI) => {
  * @function
  * @param {String} agendaitemUri - The URI of the agendaitem which is the startpoint
  */
-const deleteAgendaitem = async (agendaItemUri) => {
+const deleteAgendaitem = async (agendaitemUri) => {
   const query = `
   DELETE {
-    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
-    ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
+    ${sparqlEscapeUri(agendaitemUri)} ?p ?o .
+    ?s ?pp ${sparqlEscapeUri(agendaitemUri)} .
   } WHERE {
-    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
-    ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
+    ${sparqlEscapeUri(agendaitemUri)} ?p ?o .
+    ?s ?pp ${sparqlEscapeUri(agendaitemUri)} .
   }`;
   await mu.update(query);
 };
@@ -194,7 +194,22 @@ const deleteAgendaAndAgendaitems = async (agendaURI) => {
   await deleteAgenda(agendaURI);
 };
 
+/**
+ * @description This method will cleanup all given agendaitems so the connected subcase can be proposed on another agenda
+ * *Warning: Use this method only on agendaitems that do not have a next version or some links will be removed
+ * @param {[String]} agendaitems - A list of agendaitem URI's
+ */
+const cleanupAndDeleteNewAgendaitems = async (agendaitems) => {
+  for (const agendaitemUri of agendaitems) {
+    await deleteAgendaitemNewsletterInfo(agendaitemUri);
+    await deleteAgendaitemTreatments(agendaitemUri);
+    await deleteAgendaActivity(agendaitemUri);
+    await deleteAgendaitem(agendaitemUri);
+  }
+}
+
 export {
   deleteAgendaitem,
   deleteAgendaAndAgendaitems,
+  cleanupAndDeleteNewAgendaitems,
 };
