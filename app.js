@@ -234,7 +234,7 @@ app.post('/deleteAgenda', async (req, res) => {
     }
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting.agendas from cache)
     setTimeout(() => {
-      res.send({ status: ok, statusCode: 200, data: { "type": "agendas", "id": lastApprovedAgenda?.id } });
+      res.send({ status: ok, statusCode: 200, data: { "type": "agendas", "id": lastApprovedAgenda.id || null } });
     }, cacheClearTimeout);
   } catch (err) {
     console.error(err);

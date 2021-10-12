@@ -35,6 +35,7 @@ const getAgendaURI = async (agendaId) => {
  * @name selectAgendaitems
  * @function
  * @param {String} agendaURI - The URI of the agenda containing the agendaitem URIs
+ * @returns {[String]} - a list of agendaitem URI's
  */
 const selectAgendaitems = async (agendaURI) => {
   const query = `
@@ -45,7 +46,9 @@ const selectAgendaitems = async (agendaURI) => {
       ${sparqlEscapeUri(agendaURI)} dct:hasPart ?agendaitem .
   }`;
   const result = await mu.query(query);
-  return util.parseSparqlResults(result);
+  return result.results.bindings.map((binding) => {
+    return binding.agendaitem.value;
+  });
 };
 
 /**
@@ -70,7 +73,9 @@ const selectApprovedAgendaitemsNotFormallyOk = async (agendaURI) => {
       FILTER(?formeelOK != ${sparqlEscapeUri(AGENDAITEM_FORMALLY_OK)})
   }`;
   const result = await mu.query(query);
-  return util.parseSparqlResults(result);
+  return result.results.bindings.map((binding) => {
+    return binding.agendaitem.value;
+  });
 };
 
 /**
@@ -95,7 +100,9 @@ const selectNewAgendaitemsNotFormallyOk = async (agendaURI) => {
       FILTER(?formeelOK != ${sparqlEscapeUri(AGENDAITEM_FORMALLY_OK)})
   }`;
   const result = await mu.query(query);
-  return util.parseSparqlResults(result);
+  return result.results.bindings.map((binding) => {
+    return binding.agendaitem.value;
+  });
 };
 
 /**

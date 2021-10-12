@@ -143,7 +143,7 @@ const updatePropertiesOnAgendaitemsBatched = async function (targets) {
 };
 
 const copyAgendaitems = async (oldAgendaUri, newAgendaUri) => {
-  const agendaitemUris = (await agendaGeneral.selectAgendaitems(oldAgendaUri)).map(res => res.agendaitem);
+  const agendaitemUris = await agendaGeneral.selectAgendaitems(oldAgendaUri);
 
   for (const oldVerUri of agendaitemUris) {
     const uuid = generateUuid();
@@ -171,7 +171,7 @@ INSERT DATA {
 
 const removeNewAgendaitems = async (agendaUri) => {
   console.debug('****************** formally ok rules - remove new items ******************');
-  const agendaitemUris = (await agendaGeneral.selectNewAgendaitemsNotFormallyOk(agendaUri)).map(res => res.agendaitem);
+  const agendaitemUris = (await agendaGeneral.selectNewAgendaitemsNotFormallyOk(agendaUri));
 
   for (const agendaitemUri of agendaitemUris) {
     await deleteAgendaitem(agendaitemUri);
@@ -180,7 +180,7 @@ const removeNewAgendaitems = async (agendaUri) => {
 
 const rollbackAgendaitems = async (oldAgendaUri) => {
   console.debug('****************** formally ok rules - rollback approved items ******************');
-  const agendaitemUris = (await agendaGeneral.selectApprovedAgendaitemsNotFormallyOk(oldAgendaUri)).map(res => res.agendaitem);
+  const agendaitemUris = (await agendaGeneral.selectApprovedAgendaitemsNotFormallyOk(oldAgendaUri));
 
   /* During rollback, we don't want to delete / insert: 
     objects:
@@ -266,7 +266,7 @@ const sortAgendaitemsOnAgenda = async (agendaUri, newAgendaitems) => {
 
   for (const target of agendaitems) {
     // only update if update is needed, should do nothing in a happy flow scenario
-    if (target.number !== target.newNumber) {
+    if (target.newNumber) {
       const query = `
       PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   
@@ -298,7 +298,7 @@ const sortNewAgenda = async (agendaUri) => {
 
 const reOrderAgendaitemNumbers = (array) => {
   array.map((agendaitem, index) => {
-    if (agendaitem.number !== index + 1) {
+    if (parseInt(agendaitem.number) !== index + 1) {
       agendaitem.newNumber = index + 1;
     }
   });

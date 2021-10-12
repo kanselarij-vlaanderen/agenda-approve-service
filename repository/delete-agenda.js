@@ -9,8 +9,7 @@ import * as util from '../util/index';
  * @param {String} deleteAgendaURI - The URI of the agenda to delete the agendaitems from
  */
 const deleteAgendaitems = async (deleteAgendaURI) => {
-  const agendaitemUrisQueryResult = await selectAgendaitems(deleteAgendaURI);
-  const listOfAgendaitemUris = agendaitemUrisQueryResult.map(uri => uri.agendaitem);
+  const listOfAgendaitemUris = await selectAgendaitems(deleteAgendaURI);
 
   for (const agendaitemUri of listOfAgendaitemUris) {
     await deleteAgendaitem(agendaitemUri);
