@@ -147,8 +147,8 @@ const getLastestAgenda = async (meetingURI) => {
   if (result.results.bindings.length) {
     return result.results.bindings[0].agenda.value;
   }
-  // should be unreabable, a meeting without agendas shouldn't exist
-  return null;
+  // should be unreachable, a meeting without agendas shouldn't exist
+  throw new Error(`No agendas found for meeting ${meetingURI}`);
 }
 
 /**
