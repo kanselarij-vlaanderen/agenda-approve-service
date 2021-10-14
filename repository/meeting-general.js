@@ -127,7 +127,7 @@ const getLastApprovedAgenda = async (meetingURI) => {
  * Gets the latest agenda from the given meeting, regardless of the agenda status
  *
  * @param {uri} meetingURI
- * @returns {*} agendaURI or null
+ * @returns {*} agendaURI
  */
 const getLastestAgenda = async (meetingURI) => {
   const query = `

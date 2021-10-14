@@ -227,14 +227,16 @@ app.post('/deleteAgenda', async (req, res) => {
     await agendaDeletion.deleteAgendaAndAgendaitems(agendaURI);
     // We get the last approved agenda after deletion, because it is possible to delete approved agendas
     const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
+    let resData = null;
     if (!lastApprovedAgenda) {
       await meetingDeletion.deleteMeetingAndNewsletter(meetingURI);
     } else {
       await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO workaround for cache (deleting agenda with only an approval item)
+      resData = { "type": "agendas", "id": lastApprovedAgenda.id };
     }
     // We need a small timeout in order for the cache to be cleared by deltas (old agenda & meeting.agendas from cache)
     setTimeout(() => {
-      res.send({ status: ok, statusCode: 200, data: { "type": "agendas", "id": lastApprovedAgenda.id || null } });
+      res.send({ status: ok, statusCode: 200, data: resData });
     }, cacheClearTimeout);
   } catch (err) {
     console.error(err);
