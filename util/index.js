@@ -1,3 +1,4 @@
+const sleepTimeout = process.env.SLEEP_TIMEOUT || 5000;
 
 const parseSparqlResults = (data) => {
   const vars = data.head.vars;
@@ -12,6 +13,13 @@ const parseSparqlResults = (data) => {
   })
 };
 
+function sleep() {
+  return new Promise((resolve) => {
+    setTimeout(resolve, sleepTimeout);
+  });
+}
+
 export {
-  parseSparqlResults
+  parseSparqlResults,
+  sleep,
 };
