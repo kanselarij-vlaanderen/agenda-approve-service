@@ -13,7 +13,12 @@ const cacheClearTimeout = process.env.CACHE_CLEAR_TIMEOUT || 1500;
 app.use(bodyParser.json({ type: 'application/*+json' }));
 app.use(errorHandler);
 
-// *** NOTE *** these actions should only be executable in certain conditions (the rules for it are only in the frontend)
+/*
+  * NOTE *
+  These actions should only be executable in certain conditions
+  The rules are only partially in this service
+  Frontend has all the rules (profile differences)
+*/
 
 /**
  * approveAgenda
