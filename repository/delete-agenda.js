@@ -1,8 +1,6 @@
 import mu, { sparqlEscapeUri } from 'mu';
-import { selectAgendaItems } from './agenda-general';
+import { selectAgendaitems } from './agenda-general';
 import * as util from '../util/index';
-
-const targetGraph = 'http://mu.semte.ch/application';
 
 /**
  * Deletes agendaitems for a specific agenda
@@ -11,11 +9,10 @@ const targetGraph = 'http://mu.semte.ch/application';
  * @param {String} deleteAgendaURI - The URI of the agenda to delete the agendaitems from
  */
 const deleteAgendaitems = async (deleteAgendaURI) => {
-  const agendaItemUrisQueryResult = await selectAgendaItems(deleteAgendaURI);
-  const listOfAgendaItemUris = agendaItemUrisQueryResult.map(uri => uri.agendaitem);
+  const listOfAgendaitemUris = await selectAgendaitems(deleteAgendaURI);
 
-  for (const agendaItemUri of listOfAgendaItemUris) {
-    await deleteAgendaitem(agendaItemUri);
+  for (const agendaitemUri of listOfAgendaitemUris) {
+    await deleteAgendaitem(agendaitemUri);
   }
 };
 
@@ -26,22 +23,16 @@ const deleteAgendaitems = async (deleteAgendaURI) => {
  * @function
  * @param {String} agendaitemUri - The URI of the agendaitem which is the startpoint
  */
-const deleteAgendaitem = async (agendaItemUri) => {
+const deleteAgendaitem = async (agendaitemUri) => {
   const query = `
-  PREFIX dct: <http://purl.org/dc/terms/>
-
   DELETE {
-    GRAPH <${targetGraph}>  {
-    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
-    ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
-  }
+    ${sparqlEscapeUri(agendaitemUri)} ?p ?o .
+    ?s ?pp ${sparqlEscapeUri(agendaitemUri)} .
   } WHERE {
-    GRAPH <${targetGraph}> { 
-    ${sparqlEscapeUri(agendaItemUri)} ?p ?o .
-    ?s ?pp ${sparqlEscapeUri(agendaItemUri)} .
-    }
+    ${sparqlEscapeUri(agendaitemUri)} ?p ?o .
+    ?s ?pp ${sparqlEscapeUri(agendaitemUri)} .
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 /**
@@ -57,23 +48,19 @@ const deleteAgendaitemNewsletterInfo = async (agendaitemUri) => {
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
   DELETE {
-    GRAPH <${targetGraph}> {
     ?newsletter ?p ?o .
-    }
   }
   
   WHERE {
-    GRAPH <${targetGraph}> { 
-      ?treatment besluitvorming:heeftOnderwerp ${sparqlEscapeUri(agendaitemUri)} .
-      ?treatment a besluit:BehandelingVanAgendapunt .
-      OPTIONAL {
-        ?treatment prov:generated ?newsletter .
-        ?newsletter a besluitvorming:NieuwsbriefInfo .
-        ?newsletter ?p ?o .
-      }
+    ?treatment besluitvorming:heeftOnderwerp ${sparqlEscapeUri(agendaitemUri)} .
+    ?treatment a besluit:BehandelingVanAgendapunt .
+    OPTIONAL {
+      ?treatment prov:generated ?newsletter .
+      ?newsletter a besluitvorming:NieuwsbriefInfo .
+      ?newsletter ?p ?o .
     }
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 /**
@@ -88,19 +75,15 @@ const deleteAgendaitemTreatments = async (agendaitemUri) => {
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 
   DELETE {
-    GRAPH <${targetGraph}> {
     ?treatment ?p ?o .
-    }
   }
   
   WHERE {
-    GRAPH <${targetGraph}> { 
-      ?treatment besluitvorming:heeftOnderwerp ${sparqlEscapeUri(agendaitemUri)} .
-      ?treatment a besluit:BehandelingVanAgendapunt .
-      ?treatment ?p ?o .
-    }
+    ?treatment besluitvorming:heeftOnderwerp ${sparqlEscapeUri(agendaitemUri)} .
+    ?treatment a besluit:BehandelingVanAgendapunt .
+    ?treatment ?p ?o .
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 /**
@@ -118,25 +101,21 @@ const deleteAgendaActivity = async (agendaitemUri) => {
   PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
 
   DELETE {
-    GRAPH <${targetGraph}> {
-    ?subcase ext:isAangevraagdVoor ?session .
+    ?subcase ext:isAangevraagdVoor ?meeting .
     ?activity a besluitvorming:Agendering .
     ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
     ?activity besluitvorming:genereertAgendapunt ${sparqlEscapeUri(agendaitemUri)} . 
     ?activity ?p ?o .
-    }
   }
   WHERE {
-    GRAPH <${targetGraph}> {
-      ?subcase a dossier:Procedurestap .
-      OPTIONAL { ?subcase ext:isAangevraagdVoor ?session  .}
-      ?activity a besluitvorming:Agendering .
-      ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
-      ?activity besluitvorming:genereertAgendapunt ${sparqlEscapeUri(agendaitemUri)} .
-      ?activity ?p ?o .
-    }
+    ?subcase a dossier:Procedurestap .
+    OPTIONAL { ?subcase ext:isAangevraagdVoor ?meeting  .}
+    ?activity a besluitvorming:Agendering .
+    ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
+    ?activity besluitvorming:genereertAgendapunt ${sparqlEscapeUri(agendaitemUri)} .
+    ?activity ?p ?o .
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
 /** 
@@ -159,27 +138,23 @@ const cleanupNewAgendaitems = async (deleteAgendaURI) => {
   PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
 
   SELECT DISTINCT ?agendapunt WHERE {
-    GRAPH <${targetGraph}> {
-      ?subcase a dossier:Procedurestap .
-      OPTIONAL { ?subcase ext:isAangevraagdVoor ?session .}
-      OPTIONAL { 
-        ?activity besluitvorming:genereertAgendapunt ?agendapunt .
-        ?activity a besluitvorming:Agendering .
-      }
-      FILTER (?totalitems = 1)
-      {
-        SELECT (count(*) AS ?totalitems) ?subcase ?activity WHERE {
-          GRAPH <${targetGraph}> {
-            ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitems .
+    ?subcase a dossier:Procedurestap .
+    OPTIONAL { ?subcase ext:isAangevraagdVoor ?meeting .}
+    OPTIONAL { 
+      ?activity besluitvorming:genereertAgendapunt ?agendapunt .
+      ?activity a besluitvorming:Agendering .
+    }
+    FILTER (?totalitems = 1)
+    {
+      SELECT (count(*) AS ?totalitems) ?subcase ?activity WHERE {
+        ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitems .
 
-            ?subcase a dossier:Procedurestap . 
-            ?activity a besluitvorming:Agendering .
-            ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
-            ?activity besluitvorming:genereertAgendapunt ?agendaitems . 
-            ?activity besluitvorming:genereertAgendapunt ?totalitems . 
-          }
-        } GROUP BY ?subcase ?activity
-      }
+        ?subcase a dossier:Procedurestap . 
+        ?activity a besluitvorming:Agendering .
+        ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
+        ?activity besluitvorming:genereertAgendapunt ?agendaitems . 
+        ?activity besluitvorming:genereertAgendapunt ?totalitems . 
+      } GROUP BY ?subcase ?activity
     }
   }
   `;
@@ -200,24 +175,50 @@ const deleteAgenda = async (deleteAgendaURI) => {
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 
   DELETE {
-    GRAPH <${targetGraph}>  {
     ${sparqlEscapeUri(deleteAgendaURI)} ?p ?o .
     ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
-  }
   } WHERE {
-    GRAPH <${targetGraph}> { 
     ${sparqlEscapeUri(deleteAgendaURI)} a besluitvorming:Agenda ;
       ?p ?o .
       OPTIONAL {
         ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
       }
-    }
   }`;
-  await mu.query(query);
+  await mu.update(query);
 };
 
+/*
+  The reason for the use of sleep is due to a "bug" in mu-cache keys clearing.
+  If we execute all DELETE statements after each other, the corresponding keys are not cleared
+  If we wait some time (can take between 0.5 and 2.x seconds (or longer?)) then cache cleares happen between deletes
+  Specifically causes stale data when a meeting with only an approval agendaitem is deleted
+  The delete actions are barely used on production and more during testing, so this workaround is acceptable
+*/
+const deleteAgendaAndAgendaitems = async (agendaURI) => {
+  await cleanupNewAgendaitems(agendaURI);
+  await util.sleep();
+  await deleteAgendaitems(agendaURI);
+  await util.sleep();
+  await deleteAgenda(agendaURI);
+  await util.sleep();
+};
+
+/**
+ * @description This method will cleanup all given agendaitems so the connected subcase can be proposed on another agenda
+ * *Warning: Use this method only on agendaitems that do not have a next version or some links will be removed
+ * @param {[String]} agendaitems - A list of agendaitem URI's
+ */
+const cleanupAndDeleteNewAgendaitems = async (agendaitems) => {
+  for (const agendaitemUri of agendaitems) {
+    await deleteAgendaitemNewsletterInfo(agendaitemUri);
+    await deleteAgendaitemTreatments(agendaitemUri);
+    await deleteAgendaActivity(agendaitemUri);
+    await deleteAgendaitem(agendaitemUri);
+  }
+}
+
 export {
-  deleteAgendaitems,
-  cleanupNewAgendaitems,
-  deleteAgenda
+  deleteAgendaitem,
+  deleteAgendaAndAgendaitems,
+  cleanupAndDeleteNewAgendaitems,
 };

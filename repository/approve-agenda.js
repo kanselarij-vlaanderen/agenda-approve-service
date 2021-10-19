@@ -6,24 +6,23 @@ import mu, {
   uuid as generateUuid
 } from 'mu';
 import moment from 'moment';
-import { selectAgendaItems, selectAgendaitemNotFormallyOk } from './agenda-general';
+import * as agendaGeneral from './agenda-general';
+import { deleteAgendaitem } from './delete-agenda';
 
-const targetGraph = 'http://mu.semte.ch/application';
 const batchSize = process.env.BATCH_SIZE || 100;
 
 const AGENDA_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agenda/';
 const AGENDA_ITEM_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agendapunt/';
 const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
 
-const createNewAgenda = async (req, res, oldAgendaURI) => {
+const createNewAgenda = async (meetingUuid, oldAgendaURI) => {
   const newAgendaUuid = generateUuid();
   const newAgendaUri = AGENDA_RESOURCE_BASE + newAgendaUuid;
   const creationDate = new Date();
-  const session = req.body.createdFor;
   const serialNumbers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const { sessionUri, agendaCount, zittingDate } = await zittingInfo(session);
+  const { meetingUri, agendaCount, meetingDate } = await meetingInfo(meetingUuid);
   const serialNumber = serialNumbers[agendaCount] || agendaCount;
-  const title = `Agenda ${serialNumber} voor zitting ${moment(zittingDate).format('D-M-YYYY')}`;
+  const title = `Agenda ${serialNumber} voor zitting ${moment(meetingDate).format('D-M-YYYY')}`;
   const query = `
 PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -33,17 +32,15 @@ PREFIX dct: <http://purl.org/dc/terms/>
 PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
 
 INSERT DATA {
-    GRAPH <${targetGraph}> { 
-        ${sparqlEscapeUri(newAgendaUri)} a besluitvorming:Agenda ;
-            mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
-            dct:created ${sparqlEscapeDateTime(creationDate)} ;
-            dct:modified ${sparqlEscapeDateTime(creationDate)} ;
-            dct:title ${sparqlEscapeString(title)} ;
-            besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
-            besluitvorming:isAgendaVoor ${sparqlEscapeUri(sessionUri)} ;
-            besluitvorming:volgnummer ${sparqlEscapeString(serialNumber)} ;
-            prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
-    }
+  ${sparqlEscapeUri(newAgendaUri)} a besluitvorming:Agenda ;
+    mu:uuid ${sparqlEscapeString(newAgendaUuid)} ;
+    dct:created ${sparqlEscapeDateTime(creationDate)} ;
+    dct:modified ${sparqlEscapeDateTime(creationDate)} ;
+    dct:title ${sparqlEscapeString(title)} ;
+    besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} ;
+    besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingUri)} ;
+    besluitvorming:volgnummer ${sparqlEscapeString(serialNumber)} ;
+    prov:wasRevisionOf ${sparqlEscapeUri(oldAgendaURI)}  .
 }`;
   await mu.update(query).catch(err => {
     console.error(err);
@@ -51,93 +48,31 @@ INSERT DATA {
   return [newAgendaUuid, newAgendaUri];
 };
 
-const zittingInfo = async (zittingUuid) => {
+const meetingInfo = async (meetingUuid) => {
   const query = `
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
 PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
-SELECT ?zitting ?zittingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
-    ?zitting a besluit:Vergaderactiviteit ;
-        besluit:geplandeStart ?zittingDate ;
-        mu:uuid ${sparqlEscapeString(zittingUuid)} .
-    ?agenda besluitvorming:isAgendaVoor ?zitting .
+SELECT ?meeting ?meetingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
+    ?meeting a besluit:Vergaderactiviteit ;
+        besluit:geplandeStart ?meetingDate ;
+        mu:uuid ${sparqlEscapeString(meetingUuid)} .
+    ?agenda besluitvorming:isAgendaVoor ?meeting .
 }
-GROUP BY ?zitting ?zittingDate`;
+GROUP BY ?meeting ?meetingDate`;
   const data = await mu.query(query).catch(err => {
     console.error(err);
   });
   const firstResult = data.results.bindings[0] || {};
   return {
-    sessionUri: firstResult.zitting.value,
-    zittingDate: firstResult.zittingDate.value,
+    meetingUri: firstResult.meeting.value,
+    meetingDate: firstResult.meetingDate.value,
     agendaCount: parseInt(firstResult.agendacount.value)
   };
 };
 
-const storeAgendaItemNumbers = async (agendaUri) => {
-  const maxAgendaItemNumberSoFar = await getHighestAgendaItemNumber(agendaUri);
-  let query = `
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-
-SELECT ?agendaItem WHERE {
-    ${sparqlEscapeUri(agendaUri)} dct:hasPart ?agendaItem .
-    OPTIONAL {
-        ?agendaItem ext:prioriteit ?priority .
-    }
-    BIND(IF(BOUND(?priority), ?priority, 1000000) AS ?priorityOrMax)
-    FILTER NOT EXISTS {
-        ?agendaItem ext:agendaItemNumber ?number .
-    }
-}
-ORDER BY ?priorityOrMax`;
-  const sortedAgendaItemsToName = await mu.query(query).catch(err => {
-    console.error(err);
-  });
-
-  const triples = [];
-  sortedAgendaItemsToName.results.bindings.map((binding, index) => {
-    triples.push(`${sparqlEscapeUri(binding.agendaItem.value)} ext:agendaItemNumber ${sparqlEscapeInt(maxAgendaItemNumberSoFar + index)} .`);
-  });
-  if (triples.length < 1) {
-    return;
-  }
-  query = `
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-
-INSERT DATA {
-    GRAPH <${targetGraph}> {
-        ${triples.join('\n        ')}
-    }
-}`;
-  await mu.update(query).catch(err => {
-    console.log(err);
-  });
-};
-
-const getHighestAgendaItemNumber = async (agendaUri) => {
-  // TODO: This query seems needlessly complex. Why the "otherzitting" and comparing by year?
-  const query = `
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-
-SELECT (MAX(?number) as ?max) WHERE {
-    ${sparqlEscapeUri(agendaUri)} besluitvorming:isAgendaVoor ?zitting .
-    ?zitting besluit:geplandeStart ?zittingDate .
-    ?otherZitting besluit:geplandeStart ?otherZittingDate .
-    FILTER(YEAR(?zittingDate) = YEAR(?otherZittingDate))
-    ?otherAgenda besluitvorming:isAgendaVoor ?otherZitting .
-    ?otherAgenda dct:hasPart ?agendaItem .
-    ?agendaItem ext:agendaItemNumber ?number .
-}`;
-  const response = await mu.query(query);
-  return parseInt(((response.results.bindings[0] || {}).max || {}).value || 0);
-};
-
-const updatePropertiesOnAgendaItems = async function (agendaUri) {
+const updatePropertiesOnAgendaitems = async function (agendaUri) {
   const selectTargets = `
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX dct: <http://purl.org/dc/terms/>
@@ -151,10 +86,10 @@ SELECT DISTINCT ?target WHERE {
   const targets = data.results.bindings.map((binding) => {
     return binding.target.value;
   });
-  return updatePropertiesOnAgendaItemsBatched(targets);
+  return updatePropertiesOnAgendaitemsBatched(targets);
 };
 
-const updatePropertiesOnAgendaItemsBatched = async function (targets) {
+const updatePropertiesOnAgendaitemsBatched = async function (targets) {
   if (!targets || targets.length === 0) {
     console.log('all done updating properties of agendaitems');
     return;
@@ -165,56 +100,52 @@ const updatePropertiesOnAgendaItemsBatched = async function (targets) {
     console.log(`Agendaitems list exceeds the batchSize of ${batchSize}, splitting into batches`);
     targetsToDo = targets.splice(0, batchSize);
   }
-  const ignoredPropertiesLeft = [
+  const ignoredObjects = [
     'http://mu.semte.ch/vocabularies/core/uuid',
     'http://www.w3.org/ns/prov#wasRevisionOf',
     'http://data.vlaanderen.be/ns/besluitvorming#aanmaakdatum' // TODO: not part of besluitvorming namespace
   ];
-  const movePropertiesLeft = `
+  const copyObjects = `
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
   INSERT { 
-    GRAPH <${targetGraph}> {
-      ?target ?p ?o .
-    }
+    ?target ?p ?o .
   } WHERE {
     VALUES (?target) {
       (${targets.map(sparqlEscapeUri).join(')\n      (')})
     }
     ?target prov:wasRevisionOf ?previousURI .
     ?previousURI ?p ?o .
-    FILTER(?p NOT IN (${ignoredPropertiesLeft.map(sparqlEscapeUri).join(', ')}))
+    FILTER(?p NOT IN (${ignoredObjects.map(sparqlEscapeUri).join(', ')}))
   }`;
-  await mu.update(movePropertiesLeft);
+  await mu.update(copyObjects);
 
-  const ignoredPropertiesRight = [
+  const ignoredSubjects = [
     'http://purl.org/dc/terms/hasPart',
     'http://www.w3.org/ns/prov#wasRevisionOf'
   ];
-  const movePropertiesRight = `
+  const copySubjects = `
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
   INSERT { 
-    GRAPH <${targetGraph}> {
-      ?o ?p ?target .
-    }
+    ?s ?p ?target .
   } WHERE {
     VALUES (?target) {
       (${targets.map(sparqlEscapeUri).join(')\n      (')})
     }
     ?target prov:wasRevisionOf ?previousURI .
-    ?o ?p ?previousURI .
-    FILTER(?p NOT IN (${ignoredPropertiesRight.map(sparqlEscapeUri).join(', ')}))
+    ?s ?p ?previousURI .
+    FILTER(?p NOT IN (${ignoredSubjects.map(sparqlEscapeUri).join(', ')}))
   }`;
-  await mu.update(movePropertiesRight);
+  await mu.update(copySubjects);
 
-  return updatePropertiesOnAgendaItemsBatched(targetsToDo);
+  return updatePropertiesOnAgendaitemsBatched(targetsToDo);
 };
 
-const copyAgendaItems = async (oldAgendaUri, newAgendaUri) => {
-  const agendaItemUris = (await selectAgendaItems(oldAgendaUri)).map(res => res.agendaitem);
+const copyAgendaitems = async (oldAgendaUri, newAgendaUri) => {
+  const agendaitemUris = await agendaGeneral.selectAgendaitems(oldAgendaUri);
 
-  for (const oldVerUri of agendaItemUris) {
+  for (const oldVerUri of agendaitemUris) {
     const uuid = generateUuid();
     const newVerUri = AGENDA_ITEM_RESOURCE_BASE + uuid;
     const creationDate = new Date();
@@ -235,65 +166,149 @@ INSERT DATA {
     // TODO: "aanmaakdatum" not part of besluitvorming namespace
     await mu.update(createNewVer);
   }
-  return updatePropertiesOnAgendaItems(newAgendaUri);
+  return updatePropertiesOnAgendaitems(newAgendaUri);
 };
 
+const removeNewAgendaitems = async (agendaUri) => {
+  console.debug('****************** formally ok rules - remove new items ******************');
+  const agendaitemUris = (await agendaGeneral.selectNewAgendaitemsNotFormallyOk(agendaUri));
+
+  for (const agendaitemUri of agendaitemUris) {
+    await deleteAgendaitem(agendaitemUri);
+  }
+}
+
 const rollbackAgendaitems = async (oldAgendaUri) => {
-  const agendaitemUris = (await selectAgendaitemNotFormallyOk(oldAgendaUri)).map(res => res.agendaitem);
+  console.debug('****************** formally ok rules - rollback approved items ******************');
+  const agendaitemUris = (await agendaGeneral.selectApprovedAgendaitemsNotFormallyOk(oldAgendaUri));
+
+  /* During rollback, we don't want to delete / insert: 
+    objects:
+    - the type, query for besluit:Agendapunt would fail after
+    - the uuid, we want to keep the same object, just empty it and refill it with old values
+    - the wasRevisionOf, the link to previous agendaitem is kept
+    - the priority, because when multiple items are manually moved and only 1 gets rolled back, we get double numbers. (it makes sense, but hard to explain)
+    subjects:
+    - the relation to the agenda this version of the agendaitem is linked to
+    - the link to the next version of agendaitem (if any)
+    - the link to agenda-activity (delete and insert could be allowed, should be the same relation)
+  */
+  const ignoredObjects = [
+    'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+    'http://mu.semte.ch/vocabularies/core/uuid',
+    'http://www.w3.org/ns/prov#wasRevisionOf',
+    'http://mu.semte.ch/vocabularies/ext/prioriteit'
+  ];
+  const ignoredSubjects = [
+    'http://purl.org/dc/terms/hasPart',
+    'http://www.w3.org/ns/prov#wasRevisionOf',
+    'http://data.vlaanderen.be/ns/besluitvorming#genereertAgendapunt'
+  ];
 
   for (const oldVerUri of agendaitemUris) {
     const rollbackDeleteQuery = `
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-PREFIX prov: <http://www.w3.org/ns/prov#>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 
 DELETE {
-  ${sparqlEscapeUri(oldVerUri)} ?p ?rightTarget .
-  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
+  ${sparqlEscapeUri(oldVerUri)} ?p ?object .
+  ?subject ?pp ${sparqlEscapeUri(oldVerUri)} .
 } WHERE {
   ${sparqlEscapeUri(oldVerUri)} a besluit:Agendapunt ;
-  ?p ?rightTarget .
-  FILTER(?p NOT IN (rdf:type, mu:uuid, prov:wasRevisionOf, ext:prioriteit) )
+  ?p ?object .
+  FILTER(?p NOT IN (${ignoredObjects.map(sparqlEscapeUri).join(', ')}))
 
-  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
-  FILTER(?pp NOT IN (dct:hasPart, besluitvorming:genereertAgendapunt, prov:wasRevisionOf ))
+  ?subject ?pp ${sparqlEscapeUri(oldVerUri)} .
+  FILTER(?pp NOT IN (${ignoredSubjects.map(sparqlEscapeUri).join(', ')}))
 }
 `;
 
     const rollbackInsertQuery = `
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 PREFIX prov: <http://www.w3.org/ns/prov#>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 
 INSERT {
-  ${sparqlEscapeUri(oldVerUri)} ?p ?rightTarget .
-  ?leftTarget ?pp ${sparqlEscapeUri(oldVerUri)} .
+  ${sparqlEscapeUri(oldVerUri)} ?p ?object .
+  ?subject ?pp ${sparqlEscapeUri(oldVerUri)} .
 } WHERE {
   ${sparqlEscapeUri(oldVerUri)} a besluit:Agendapunt ;
   prov:wasRevisionOf ?previousAgendaitem .
-  ?previousAgendaitem ?p ?rightTarget .
-  FILTER(?p NOT IN (rdf:type, mu:uuid, prov:wasRevisionOf) )
+  ?previousAgendaitem ?p ?object .
+  FILTER(?p NOT IN (${ignoredObjects.map(sparqlEscapeUri).join(', ')}))
 
-  ?leftTarget ?pp ?previousAgendaitem .
-  FILTER(?pp NOT IN (dct:hasPart, besluitvorming:genereertAgendapunt, prov:wasRevisionOf ))
+  ?subject ?pp ?previousAgendaitem .
+  FILTER(?pp NOT IN (${ignoredSubjects.map(sparqlEscapeUri).join(', ')}))
 }
 `;
     await mu.update(rollbackDeleteQuery);
     await mu.update(rollbackInsertQuery);
   }
+};
+
+const sortAgendaitemsOnAgenda = async (agendaUri, newAgendaitems) => {
+  console.debug('****************** formally ok rules - sorting agendaitems on agenda ******************');
+  const agendaitems = await agendaGeneral.selectAgendaitemsForSorting(agendaUri);
+
+  // If we have newAgendaitems on this agenda, it means they have to be sorted to the bottom of the list
+  // so we find them and push them to the end of the array
+  if (newAgendaitems) {
+    const itemsToShift = agendaitems.filter(agendaitem => newAgendaitems.find(item => agendaitem.agendaitem == item));
+    itemsToShift.map((agendaitem) => {
+      agendaitems.push(agendaitems.splice(agendaitems.indexOf(agendaitem), 1)[0]);
+    });
+  }
+  // .filter keeps reference to the same objects
+  const notes = agendaitems.filter(agendaitem => !agendaitem.isRemark);
+  const announcements = agendaitems.filter(agendaitem => agendaitem.isRemark);
+
+  // for both lists, we have to fill in any gaps in numbering made by rollbacks or deletes
+  reOrderAgendaitemNumbers(notes);
+  reOrderAgendaitemNumbers(announcements);
+
+  for (const target of agendaitems) {
+    // only update if update is needed, should do nothing in a happy flow scenario
+    if (target.newNumber) {
+      const query = `
+      PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  
+      DELETE {
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?number .
+      }
+      INSERT {
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ${sparqlEscapeInt(target.newNumber)} .
+      }
+      WHERE {
+        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?number .
+      }
+      `;
+      await mu.update(query);
+    }
+  }
   return;
 };
 
+const sortNewAgenda = async (agendaUri) => {
+  console.debug('****************** formally ok rules - sorting agendaitems on new agenda ******************');
+  const newAgendaitems = (await agendaGeneral.selectNewAgendaitemsNotFormallyOk(agendaUri));
+
+  // If we had any targets, sort the agendaitems of the entire agenda
+  if (newAgendaitems) {
+    await sortAgendaitemsOnAgenda(agendaUri, newAgendaitems);
+  }
+};
+
+const reOrderAgendaitemNumbers = (array) => {
+  array.map((agendaitem, index) => {
+    if (parseInt(agendaitem.number) !== index + 1) {
+      agendaitem.newNumber = index + 1;
+    }
+  });
+}
+
 export {
   createNewAgenda,
-  storeAgendaItemNumbers,
-  copyAgendaItems,
+  copyAgendaitems,
+  removeNewAgendaitems,
   rollbackAgendaitems,
+  sortAgendaitemsOnAgenda,
+  sortNewAgenda,
 };
