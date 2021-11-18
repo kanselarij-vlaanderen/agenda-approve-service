@@ -257,8 +257,8 @@ const sortAgendaitemsOnAgenda = async (agendaUri, newAgendaitems) => {
     });
   }
   // .filter keeps reference to the same objects
-  const notes = agendaitems.filter(agendaitem => !agendaitem.isRemark);
-  const announcements = agendaitems.filter(agendaitem => agendaitem.isRemark);
+  const notes = agendaitems.filter(agendaitem => agendaitem.isRemark == "false");
+  const announcements = agendaitems.filter(agendaitem => agendaitem.isRemark == "true");
 
   // for both lists, we have to fill in any gaps in numbering made by rollbacks or deletes
   reOrderAgendaitemNumbers(notes);

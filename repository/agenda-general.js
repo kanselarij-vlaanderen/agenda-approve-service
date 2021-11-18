@@ -117,13 +117,13 @@ const selectAgendaitemsForSorting = async (agendaURI) => {
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
 
-  SELECT DISTINCT ?agendaitem ?number ?remark
+  SELECT DISTINCT ?agendaitem ?number ?isRemark
   WHERE {
       ${sparqlEscapeUri(agendaURI)} dct:hasPart ?agendaitem .
       ?agendaitem a besluit:Agendapunt ;
         ext:prioriteit ?number ;
-        ext:wordtGetoondAlsMededeling ?remark .
-  } ORDER BY ?remark ?number
+        ext:wordtGetoondAlsMededeling ?isRemark .
+  } ORDER BY ?isRemark ?number
   `;
   const result = await mu.query(query);
   return util.parseSparqlResults(result);
