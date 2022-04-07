@@ -103,7 +103,7 @@ const updatePropertiesOnAgendaitemsBatched = async function (targets) {
   const ignoredObjects = [
     'http://mu.semte.ch/vocabularies/core/uuid',
     'http://www.w3.org/ns/prov#wasRevisionOf',
-    'http://data.vlaanderen.be/ns/besluitvorming#aanmaakdatum' // TODO: not part of besluitvorming namespace
+    'http://purl.org/dc/terms/created',
   ];
   const copyObjects = `
   PREFIX prov: <http://www.w3.org/ns/prov#>
@@ -159,11 +159,10 @@ PREFIX dct: <http://purl.org/dc/terms/>
 INSERT DATA { 
     ${sparqlEscapeUri(newVerUri)} a besluit:Agendapunt ;
         mu:uuid ${sparqlEscapeString(uuid)} ;
-        besluitvorming:aanmaakdatum ${sparqlEscapeDateTime(creationDate)} ;
+        dct:created ${sparqlEscapeDateTime(creationDate)} ;
         prov:wasRevisionOf ${sparqlEscapeUri(oldVerUri)} .
     ${sparqlEscapeUri(newAgendaUri)} dct:hasPart ${sparqlEscapeUri(newVerUri)} .
 }`;
-    // TODO: "aanmaakdatum" not part of besluitvorming namespace
     await mu.update(createNewVer);
   }
   return updatePropertiesOnAgendaitems(newAgendaUri);
