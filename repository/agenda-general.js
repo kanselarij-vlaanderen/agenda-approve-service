@@ -116,12 +116,13 @@ const selectAgendaitemsForSorting = async (agendaURI) => {
   PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+  PREFIX schema: <http://schema.org/>
 
   SELECT DISTINCT ?agendaitem ?number ?isRemark
   WHERE {
       ${sparqlEscapeUri(agendaURI)} dct:hasPart ?agendaitem .
       ?agendaitem a besluit:Agendapunt ;
-        ext:prioriteit ?number ;
+        schema:position ?number ;
         ext:wordtGetoondAlsMededeling ?isRemark .
   } ORDER BY ?isRemark ?number
   `;
