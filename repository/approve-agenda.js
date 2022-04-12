@@ -103,7 +103,7 @@ const updatePropertiesOnAgendaitemsBatched = async function (targets) {
   const ignoredObjects = [
     'http://mu.semte.ch/vocabularies/core/uuid',
     'http://www.w3.org/ns/prov#wasRevisionOf',
-    'http://data.vlaanderen.be/ns/besluitvorming#aanmaakdatum' // TODO: not part of besluitvorming namespace
+    'http://purl.org/dc/terms/created',
   ];
   const copyObjects = `
   PREFIX prov: <http://www.w3.org/ns/prov#>
@@ -159,11 +159,10 @@ PREFIX dct: <http://purl.org/dc/terms/>
 INSERT DATA { 
     ${sparqlEscapeUri(newVerUri)} a besluit:Agendapunt ;
         mu:uuid ${sparqlEscapeString(uuid)} ;
-        besluitvorming:aanmaakdatum ${sparqlEscapeDateTime(creationDate)} ;
+        dct:created ${sparqlEscapeDateTime(creationDate)} ;
         prov:wasRevisionOf ${sparqlEscapeUri(oldVerUri)} .
     ${sparqlEscapeUri(newAgendaUri)} dct:hasPart ${sparqlEscapeUri(newVerUri)} .
 }`;
-    // TODO: "aanmaakdatum" not part of besluitvorming namespace
     await mu.update(createNewVer);
   }
   return updatePropertiesOnAgendaitems(newAgendaUri);
@@ -187,7 +186,7 @@ const rollbackAgendaitems = async (oldAgendaUri) => {
     - the type, query for besluit:Agendapunt would fail after
     - the uuid, we want to keep the same object, just empty it and refill it with old values
     - the wasRevisionOf, the link to previous agendaitem is kept
-    - the priority, because when multiple items are manually moved and only 1 gets rolled back, we get double numbers. (it makes sense, but hard to explain)
+    - the position, because when multiple items are manually moved and only 1 gets rolled back, we get double numbers. (it makes sense, but hard to explain)
     subjects:
     - the relation to the agenda this version of the agendaitem is linked to
     - the link to the next version of agendaitem (if any)
@@ -197,7 +196,7 @@ const rollbackAgendaitems = async (oldAgendaUri) => {
     'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
     'http://mu.semte.ch/vocabularies/core/uuid',
     'http://www.w3.org/ns/prov#wasRevisionOf',
-    'http://mu.semte.ch/vocabularies/ext/prioriteit'
+    'http://schema.org/position',
   ];
   const ignoredSubjects = [
     'http://purl.org/dc/terms/hasPart',
@@ -268,16 +267,16 @@ const sortAgendaitemsOnAgenda = async (agendaUri, newAgendaitems) => {
     // only update if update is needed, should do nothing in a happy flow scenario
     if (target.newNumber) {
       const query = `
-      PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+      PREFIX schema: <http://schema.org/>
   
       DELETE {
-        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?number .
+        ${sparqlEscapeUri(target.agendaitem)} schema:position ?number .
       }
       INSERT {
-        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ${sparqlEscapeInt(target.newNumber)} .
+        ${sparqlEscapeUri(target.agendaitem)} schema:position ${sparqlEscapeInt(target.newNumber)} .
       }
       WHERE {
-        ${sparqlEscapeUri(target.agendaitem)} ext:prioriteit ?number .
+        ${sparqlEscapeUri(target.agendaitem)} schema:position ?number .
       }
       `;
       await mu.update(query);
