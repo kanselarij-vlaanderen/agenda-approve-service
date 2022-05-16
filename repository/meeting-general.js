@@ -10,7 +10,6 @@ const getMeetingURI = async (meetingId) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-
   SELECT DISTINCT ?meeting WHERE {
     ?meeting a besluit:Vergaderactiviteit ;
       mu:uuid ${sparqlEscapeString(meetingId)} .
@@ -26,7 +25,27 @@ const getMeetingURI = async (meetingId) => {
 
 };
 
-const closeMeeting = async (meetingURI, agendaURI) => {
+
+const getMeetingURIFromAgenda = async (agendaURI) => {
+  const query = `
+  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+
+  SELECT DISTINCT ?meeting WHERE {
+    ${sparqlEscapeUri(agendaURI)} besluitvorming:isAgendaVoor ?meeting .
+  }`;
+
+  const data = await mu.query(query).catch(err => {
+    console.error(err);
+  });
+  if (data.results.bindings.length) {
+    return data.results.bindings[0].meeting.value;
+  }
+  throw new Error(`Meeting for agendaURI ${agendaURI} not found`);
+
+};
+
+const closeMeeting = async (agendaURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -34,18 +53,18 @@ const closeMeeting = async (meetingURI, agendaURI) => {
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
 
   DELETE {
-    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda ;
+    ?meetingURI besluitvorming:behandelt ?oldAgenda ;
       ext:finaleZittingVersie ?oldStatus .
   }
   INSERT {
-    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ${sparqlEscapeUri(agendaURI)} ;
+    ?meetingURI besluitvorming:behandelt ${sparqlEscapeUri(agendaURI)} ;
       ext:finaleZittingVersie "true"^^mulit:boolean .
   }
   WHERE {
-    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
-    ${sparqlEscapeUri(agendaURI)} besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} .
-    OPTIONAL { ${sparqlEscapeUri(meetingURI)} ext:finaleZittingVersie ?oldStatus . }
-    OPTIONAL { ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda . }
+    ?meetingURI a besluit:Vergaderactiviteit .
+    ${sparqlEscapeUri(agendaURI)} besluitvorming:isAgendaVoor ?meetingURI .
+    OPTIONAL { ?meetingURI ext:finaleZittingVersie ?oldStatus . }
+    OPTIONAL { ?meetingURI besluitvorming:behandelt ?oldAgenda . }
   }`;
   return await mu.update(query);
 }
@@ -72,7 +91,7 @@ const reopenMeeting = async (meetingURI) => {
   return await mu.update(query);
 }
 
-const getDesignAgenda = async (meetingURI) => {
+const getDesignAgendaFromMeetingURI = async (meetingURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -82,6 +101,25 @@ const getDesignAgenda = async (meetingURI) => {
     ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
     ?designAgenda besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} ;
       a besluitvorming:Agenda;
+      besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} .
+  }`;
+
+  const result = await mu.query(query);
+  if (result.results.bindings.length) {
+    return result.results.bindings[0].designAgenda.value;
+  }
+  return null;
+}
+
+const getDesignAgenda = async (agendaId) => {
+  const query = `
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+
+  SELECT ?designAgenda
+  WHERE {
+    ?designAgenda a besluitvorming:Agenda;
+      mu:uuid ${sparqlEscapeString(agendaId)} ;
       besluitvorming:agendaStatus ${sparqlEscapeUri(AGENDA_STATUS_DESIGN)} .
   }`;
 
@@ -104,7 +142,7 @@ const getLastApprovedAgenda = async (meetingURI) => {
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
-  SELECT (?agendaId AS ?lastApprovedId) (?agenda AS ?lastApprovedAgendaUri) 
+  SELECT (?agendaId AS ?lastApprovedId) (?agenda AS ?lastApprovedAgendaUri)
   WHERE {
     ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
     ?agenda besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} ;
@@ -155,8 +193,8 @@ const getLastestAgenda = async (meetingURI) => {
  * In order to trigger a cache invalidation in some cases
  * We delete and reinsert the relation between meeting and agenda
  *
- * @param {uri} meetingURI 
- * @param {uri} lastApprovedAgendaUri 
+ * @param {uri} meetingURI
+ * @param {uri} lastApprovedAgendaUri
  * @returns {void}
  */
 const updateLastApprovedAgenda = async (meetingURI, lastApprovedAgendaUri) => {
@@ -180,9 +218,11 @@ const updateLastApprovedAgenda = async (meetingURI, lastApprovedAgendaUri) => {
 
 export {
   getMeetingURI,
+  getMeetingURIFromAgenda,
   closeMeeting,
   reopenMeeting,
   getDesignAgenda,
+  getDesignAgendaFromMeetingURI,
   getLastApprovedAgenda,
   getLastestAgenda,
   updateLastApprovedAgenda,

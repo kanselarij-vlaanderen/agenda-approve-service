@@ -15,12 +15,12 @@ const AGENDA_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agenda/';
 const AGENDA_ITEM_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agendapunt/';
 const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
 
-const createNewAgenda = async (meetingUuid, oldAgendaURI) => {
+const createNewAgenda = async (oldAgendaURI) => {
   const newAgendaUuid = generateUuid();
   const newAgendaUri = AGENDA_RESOURCE_BASE + newAgendaUuid;
   const creationDate = new Date();
   const serialNumbers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const { meetingUri, agendaCount, meetingDate } = await meetingInfo(meetingUuid);
+  const { meetingUri, agendaCount, meetingDate } = await meetingInfoFromAgenda(oldAgendaURI);
   const serialNumber = serialNumbers[agendaCount] || agendaCount;
   const title = `Agenda ${serialNumber} voor zitting ${moment(meetingDate).format('D-M-YYYY')}`;
   const query = `
@@ -48,19 +48,18 @@ INSERT DATA {
   return [newAgendaUuid, newAgendaUri];
 };
 
-const meetingInfo = async (meetingUuid) => {
+const meetingInfoFromAgenda = async (agendaURI) => {
   const query = `
-PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+    PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
-SELECT ?meeting ?meetingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
-    ?meeting a besluit:Vergaderactiviteit ;
-        besluit:geplandeStart ?meetingDate ;
-        mu:uuid ${sparqlEscapeString(meetingUuid)} .
-    ?agenda besluitvorming:isAgendaVoor ?meeting .
-}
-GROUP BY ?meeting ?meetingDate`;
+    SELECT ?meeting ?meetingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
+        ?meeting a besluit:Vergaderactiviteit ;
+            besluit:geplandeStart ?meetingDate .
+        ${sparqlEscapeUri(agendaURI)} besluitvorming:isAgendaVoor ?meeting .
+        ?agenda besluitvorming:isAgendaVoor ?meeting .
+    }`;
   const data = await mu.query(query).catch(err => {
     console.error(err);
   });
@@ -80,7 +79,7 @@ PREFIX dct: <http://purl.org/dc/terms/>
 SELECT DISTINCT ?target WHERE {
     ${sparqlEscapeUri(agendaUri)} dct:hasPart ?target .
     ?target prov:wasRevisionOf ?previousURI .
-}  
+}
   `;
   const data = await mu.query(selectTargets);
   const targets = data.results.bindings.map((binding) => {
@@ -108,7 +107,7 @@ const updatePropertiesOnAgendaitemsBatched = async function (targets) {
   const copyObjects = `
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
-  INSERT { 
+  INSERT {
     ?target ?p ?o .
   } WHERE {
     VALUES (?target) {
@@ -127,7 +126,7 @@ const updatePropertiesOnAgendaitemsBatched = async function (targets) {
   const copySubjects = `
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
-  INSERT { 
+  INSERT {
     ?s ?p ?target .
   } WHERE {
     VALUES (?target) {
@@ -156,7 +155,7 @@ PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX dct: <http://purl.org/dc/terms/>
 
-INSERT DATA { 
+INSERT DATA {
     ${sparqlEscapeUri(newVerUri)} a besluit:Agendapunt ;
         mu:uuid ${sparqlEscapeString(uuid)} ;
         dct:created ${sparqlEscapeDateTime(creationDate)} ;
@@ -181,7 +180,7 @@ const rollbackAgendaitems = async (oldAgendaUri) => {
   console.debug('****************** formally ok rules - rollback approved items ******************');
   const agendaitemUris = (await agendaGeneral.selectApprovedAgendaitemsNotFormallyOk(oldAgendaUri));
 
-  /* During rollback, we don't want to delete / insert: 
+  /* During rollback, we don't want to delete / insert:
     objects:
     - the type, query for besluit:Agendapunt would fail after
     - the uuid, we want to keep the same object, just empty it and refill it with old values
@@ -268,7 +267,7 @@ const sortAgendaitemsOnAgenda = async (agendaUri, newAgendaitems) => {
     if (target.newNumber) {
       const query = `
       PREFIX schema: <http://schema.org/>
-  
+
       DELETE {
         ${sparqlEscapeUri(target.agendaitem)} schema:position ?number .
       }
