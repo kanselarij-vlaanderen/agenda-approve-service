@@ -1,5 +1,4 @@
 import { app, errorHandler } from 'mu';
-import bodyParser from 'body-parser';
 
 import * as agendaGeneral from './repository/agenda-general';
 import * as meetingGeneral from './repository/meeting-general';
@@ -9,7 +8,6 @@ import * as meetingDeletion from './repository/delete-meeting';
 
 const cacheClearTimeout = process.env.CACHE_CLEAR_TIMEOUT || 1500;
 
-app.use(bodyParser.json({ type: 'application/*+json' }));
 app.use(errorHandler);
 
 /*
