@@ -1,13 +1,13 @@
 {
   "name": "agenda-approve-service",
   "version": "4.1.0",
-  "description": "",
-  "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "Microservice providing endpoints to manage agendas versions",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kanselarij-vlaanderen/agenda-approve-service.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "redpencil.io",
+  "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
     "moment": "^2.29.1"
