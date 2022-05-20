@@ -9,7 +9,6 @@
   "author": "redpencil.io",
   "license": "MIT",
   "dependencies": {
-    "cors": "^2.8.5",
     "moment": "^2.29.1"
   }
 }
