@@ -8,7 +8,7 @@ Add the following snippet to your `docker-compose.yml`:
 
 ```yml
 document-versions:
-  image: kanselarij/agenda-approval-service
+  image: kanselarij/agenda-approve-service
 ```
 
 ## Reference

@@ -196,7 +196,7 @@ app.post('/meetings/:id/close', async (req, res, next) => {
     const meetingURI = await meetingGeneral.getMeetingURIFromAgenda(designAgendaURI);
     const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
     if (!lastApprovedAgenda) {
-      const error =  new Error(`There should be at least 1 approved Agenda on meeting with id ${meetingId}`);
+      const error = new Error(`There should be at least 1 approved Agenda on meeting with URI ${meetingURI}`);
       error.status = 404;
       return next(error);
     }
@@ -298,7 +298,7 @@ app.post('/meetings/:id/reopen', async (req, res, next) => {
     const designAgendaURI = await meetingGeneral.getDesignAgendaFromMeetingURI(meetingURI);
     if (designAgendaURI) {
       const error = new Error(`Meeting with id ${meetingId} already has a design agenda, only 1 is allowed.`);
-      rror.status = 404;
+      error.status = 404;
       return next(error);
     }
     // Reopen meeting is not needed when adding a design agenda after manual deletion of current one
