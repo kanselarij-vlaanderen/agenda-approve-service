@@ -1,5 +1,4 @@
 import { app, errorHandler } from 'mu';
-import { ok } from 'assert';
 import bodyParser from 'body-parser';
 
 import * as agendaGeneral from './repository/agenda-general';
