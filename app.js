@@ -6,7 +6,7 @@ import * as agendaApproval from './repository/approve-agenda';
 import * as agendaDeletion from './repository/delete-agenda';
 import * as meetingDeletion from './repository/delete-meeting';
 
-const cacheClearTimeout = process.env.CACHE_CLEAR_TIMEOUT || 1500;
+const cacheClearTimeout = process.env.CACHE_CLEAR_TIMEOUT || 2000;
 
 app.use(errorHandler);
 

@@ -23,19 +23,20 @@ Approve the design agenda and create a new design agenda.
 
 Approve the design agenda and close the meeting.
 
-#### POST /meetings/:id/close
-
-Remove the design agenda if present and close the meeting.
-
 #### POST /agendas/:id/reopen
 
-Remove the design agenda and re-open the last approved agenda.
+Re-open the last approved agenda (and remove the design agenda if any)
 
 #### DELETE /agendas/:id
 
 Delete the latest agenda. If this agenda was the last on the meeting, also delete the meeting.
 
+#### POST /meetings/:id/close
+
+Remove the design agenda if present and close the meeting.
+
 #### POST /meetings/:id/reopen
 
 Re-open the meeting and create a new design agenda.
+
 
