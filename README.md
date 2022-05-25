@@ -7,7 +7,7 @@ Microservice providing capabilities to execute various actions related to the ap
 Add the following snippet to your `docker-compose.yml`:
 
 ```yml
-document-versions:
+agenda-approval:
   image: kanselarij/agenda-approve-service
 ```
 
