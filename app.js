@@ -8,8 +8,6 @@ import * as meetingDeletion from './repository/delete-meeting';
 
 const cacheClearTimeout = process.env.CACHE_CLEAR_TIMEOUT || 2000;
 
-app.use(errorHandler);
-
 /*
   * NOTE *
   These actions should only be executable in certain conditions
@@ -318,3 +316,5 @@ app.post('/meetings/:id/reopen', async (req, res, next) => {
     res.status(500).send({error: { detail: (err.message || 'Something went wrong during the creation of the designagenda.')}});
   }
 });
+
+app.use(errorHandler);
