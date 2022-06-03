@@ -67,7 +67,9 @@ app.post('/agendas/:id/approve', async (req, res, next) => {
     }, cacheClearTimeout);
   } catch (err) {
     console.error(err);
-    res.status(500).send({ error: { detail: (err.message || 'Something went wrong during the agenda approval.')}});
+    const error = new Error(err.message || 'Something went wrong during the agenda approval.');
+    error.status = 500;
+    return next(error);
   }
 });
 
@@ -120,7 +122,9 @@ app.post('/agendas/:id/close', async (req, res, next) => {
     }, cacheClearTimeout);
   } catch (err) {
     console.error(err);
-    res.status(500).send({error: { detail: (err.message || 'Something went wrong during the agenda approval and closing of the meeting.')}});
+    const error = new Error(err.message || 'Something went wrong during the agenda approval and closing of the meeting.');
+    error.status = 500;
+    return next(error);
   }
 });
 
@@ -165,7 +169,9 @@ app.post('/meetings/:id/close', async (req, res, next) => {
     }, cacheClearTimeout);
   } catch (err) {
     console.error(err);
-    res.status(500).send({error: { detail: (err.message || 'Something went wrong during the closing of the meeting.')}});
+    const error = new Error(err.message || 'Something went wrong during the closing of the meeting.');
+    error.status = 500;
+    return next(error);
   }
 });
 
@@ -209,7 +215,9 @@ app.post('/meetings/:id/close', async (req, res, next) => {
     res.status(200).send({ data: { "type": "agendas", "id": lastApprovedAgenda.id } } );
   } catch (err) {
     console.error(err);
-    res.status(500).send({error: { detail: (err.message || 'Something went wrong during the reopening of the agenda.')}});
+    const error = new Error(err.message || 'Something went wrong during the reopening of the agenda.');
+    error.status = 500;
+    return next(error);
   }
 });
 
@@ -313,7 +321,9 @@ app.post('/meetings/:id/reopen', async (req, res, next) => {
     }, cacheClearTimeout);
   } catch (err) {
     console.error(err);
-    res.status(500).send({error: { detail: (err.message || 'Something went wrong during the creation of the designagenda.')}});
+    const error = new Error(err.message || 'Something went wrong during the creation of the designagenda.');
+    error.status = 500;
+    return next(error);
   }
 });
 
