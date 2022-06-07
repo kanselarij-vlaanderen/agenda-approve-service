@@ -267,10 +267,10 @@ app.delete('/agendas/:id', async (req, res, next) => {
       res.status(200).send({ data: responseData });
     }, cacheClearTimeout);
   } catch (err) {
-    console.log(`Delete agenda ${agendaId} failed.`);
-     // TODO APA can this be done in a better way?
     console.error(err);
-    next(err);
+    const error = new Error(err.message || `Something went wrong while deleting agenda ${agendaId}.`);
+    error.status = 500;
+    return next(error);
   }
 });
 
