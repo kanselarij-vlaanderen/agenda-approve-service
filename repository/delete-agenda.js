@@ -63,6 +63,33 @@ const deleteAgendaitemNewsletterInfo = async (agendaitemUri) => {
   await mu.update(query);
 };
 
+
+/**
+ * @description This function will delete all predicates of decidionActivity that are linked to the agendaitem treatment. 
+ * @name deleteAgendaitemDecisionActivity
+ * @function
+ * @param {String} agendaitemUri - The URI of the agendaitem which is the startpoint
+ */
+ const deleteAgendaitemDecisionActivity = async (agendaitemUri) => {
+  // *NOTE* there are 3 inverse relations to the report, publication-flows and sign-flows.
+  // not deleting them because we can assume that this delete would not be called if any of those are present
+  const query = `
+  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+
+  DELETE {
+    ?decisionActivity ?p ?o .
+  }
+  
+  WHERE {
+    ?decisionActivity ^besluitvorming:heeftBeslissing/besluitvorming:heeftOnderwerp ${sparqlEscapeUri(agendaitemUri)} .
+    ?decisionActivity a besluitvorming:Beslissingsactiviteit .
+    ?decisionActivity ?p ?o .
+  }`;
+  console.log('query', query)
+  await mu.update(query);
+};
+
 /**
  * @description This function will delete all predicates of treatments that are linked to the agendaitem. 
  * @name deleteAgendaitemTreatments
@@ -165,6 +192,7 @@ const cleanupNewAgendaitems = async (deleteAgendaURI) => {
 
   for (const agendaitemUri of listOfAgendaitemUris) {
     await deleteAgendaitemNewsletterInfo(agendaitemUri);
+    await deleteAgendaitemDecisionActivity(agendaitemUri);
     await deleteAgendaitemTreatments(agendaitemUri);
     await deleteAgendaActivity(agendaitemUri);
   }
@@ -211,6 +239,7 @@ const deleteAgendaAndAgendaitems = async (agendaURI) => {
 const cleanupAndDeleteNewAgendaitems = async (agendaitems) => {
   for (const agendaitemUri of agendaitems) {
     await deleteAgendaitemNewsletterInfo(agendaitemUri);
+    await deleteAgendaitemDecisionActivity(agendaitemUri);
     await deleteAgendaitemTreatments(agendaitemUri);
     await deleteAgendaActivity(agendaitemUri);
     await deleteAgendaitem(agendaitemUri);
