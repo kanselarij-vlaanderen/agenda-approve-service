@@ -65,7 +65,7 @@ const deleteAgendaitemNewsletterInfo = async (agendaitemUri) => {
 
 
 /**
- * @description This function will delete all predicates of decidionActivity that are linked to the agendaitem treatment. 
+ * @description This function will delete all predicates of decisionActivity that are linked to the agendaitem treatment. 
  * @name deleteAgendaitemDecisionActivity
  * @function
  * @param {String} agendaitemUri - The URI of the agendaitem which is the startpoint
@@ -86,7 +86,6 @@ const deleteAgendaitemNewsletterInfo = async (agendaitemUri) => {
     ?decisionActivity a besluitvorming:Beslissingsactiviteit .
     ?decisionActivity ?p ?o .
   }`;
-  console.log('query', query)
   await mu.update(query);
 };
 
