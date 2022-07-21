@@ -21,7 +21,7 @@ const deletePublicationActivities = async (meetingURI) => {
   PREFIX prov: <http://www.w3.org/ns/prov#>
 
   DELETE {
-    ?s ?p ?o .
+    ?activity ?p ?o .
   } WHERE {
     ?activity ?pubPredicate ${sparqlEscapeUri(meetingURI)} ;
       ?p ?o .
