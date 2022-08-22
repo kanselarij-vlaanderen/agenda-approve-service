@@ -123,7 +123,14 @@ const selectAgendaitemsForSorting = async (agendaURI) => {
       ${sparqlEscapeUri(agendaURI)} dct:hasPart ?agendaitem .
       ?agendaitem a besluit:Agendapunt ;
         schema:position ?number ;
-        ext:wordtGetoondAlsMededeling ?isRemark .
+        dct:type ?type .
+      BIND(
+        IF (
+          ?type = <http://themis.vlaanderen.be/id/concept/agendapunt-type/8f8adcf0-58ef-4edc-9e36-0c9095fd76b0>,
+          "true"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean>,
+          "false"^^<http://mu.semte.ch/vocabularies/typed-literals/boolean>
+        ) AS ?isRemark
+      )
   } ORDER BY ?isRemark ?number
   `;
   const result = await mu.query(query);
