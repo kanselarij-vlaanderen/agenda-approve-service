@@ -118,13 +118,13 @@ const selectAgendaitemsForSorting = async (agendaURI) => {
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX schema: <http://schema.org/>
 
-  SELECT DISTINCT ?agendaitem ?number ?isRemark
+  SELECT DISTINCT ?agendaitem ?number ?type
   WHERE {
       ${sparqlEscapeUri(agendaURI)} dct:hasPart ?agendaitem .
       ?agendaitem a besluit:Agendapunt ;
         schema:position ?number ;
-        ext:wordtGetoondAlsMededeling ?isRemark .
-  } ORDER BY ?isRemark ?number
+        dct:type ?type .
+  } ORDER BY ?type ?number
   `;
   const result = await mu.query(query);
   return util.parseSparqlResults(result);

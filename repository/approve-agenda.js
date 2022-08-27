@@ -14,6 +14,8 @@ const batchSize = process.env.BATCH_SIZE || 100;
 const AGENDA_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agenda/';
 const AGENDA_ITEM_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agendapunt/';
 const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
+const AGENDAITEM_TYPE_NOTA = 'http://themis.vlaanderen.be/id/concept/agendapunt-type/dd47a8f8-3ad2-4d5a-8318-66fc02fe80fd';
+const AGENDAITEM_TYPE_REMARK = 'http://themis.vlaanderen.be/id/concept/agendapunt-type/8f8adcf0-58ef-4edc-9e36-0c9095fd76b0';
 
 const createNewAgenda = async (oldAgendaURI) => {
   const newAgendaUuid = generateUuid();
@@ -255,8 +257,8 @@ const sortAgendaitemsOnAgenda = async (agendaUri, newAgendaitems) => {
     });
   }
   // .filter keeps reference to the same objects
-  const notes = agendaitems.filter(agendaitem => agendaitem.isRemark == "false");
-  const announcements = agendaitems.filter(agendaitem => agendaitem.isRemark == "true");
+  const notes = agendaitems.filter(agendaitem => agendaitem.type === AGENDAITEM_TYPE_NOTA);
+  const announcements = agendaitems.filter(agendaitem => agendaitem.type === AGENDAITEM_TYPE_REMARK);
 
   // for both lists, we have to fill in any gaps in numbering made by rollbacks or deletes
   reOrderAgendaitemNumbers(notes);
