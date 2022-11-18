@@ -46,13 +46,14 @@ const deleteAgendaitemNewsletterInfo = async (agendaitemUri) => {
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX prov: <http://www.w3.org/ns/prov#>
+  PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {
     ?newsletter ?p ?o .
   }
   
   WHERE {
-    ?treatment besluitvorming:heeftOnderwerp ${sparqlEscapeUri(agendaitemUri)} .
+    ?treatment dct:subject ${sparqlEscapeUri(agendaitemUri)} .
     ?treatment a besluit:BehandelingVanAgendapunt .
     OPTIONAL {
       ?treatment prov:generated ?newsletter .
@@ -76,13 +77,14 @@ const deleteAgendaitemNewsletterInfo = async (agendaitemUri) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {
     ?decisionActivity ?p ?o .
   }
   
   WHERE {
-    ?decisionActivity ^besluitvorming:heeftBeslissing/besluitvorming:heeftOnderwerp ${sparqlEscapeUri(agendaitemUri)} .
+    ?decisionActivity ^besluitvorming:heeftBeslissing/dct:subject ${sparqlEscapeUri(agendaitemUri)} .
     ?decisionActivity a besluitvorming:Beslissingsactiviteit .
     ?decisionActivity ?p ?o .
   }`;
@@ -99,13 +101,14 @@ const deleteAgendaitemTreatments = async (agendaitemUri) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {
     ?treatment ?p ?o .
   }
   
   WHERE {
-    ?treatment besluitvorming:heeftOnderwerp ${sparqlEscapeUri(agendaitemUri)} .
+    ?treatment dct:subject ${sparqlEscapeUri(agendaitemUri)} .
     ?treatment a besluit:BehandelingVanAgendapunt .
     ?treatment ?p ?o .
   }`;
