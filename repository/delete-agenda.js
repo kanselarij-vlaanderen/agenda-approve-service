@@ -100,7 +100,6 @@ const deleteAgendaitemNewsletterInfo = async (agendaitemUri) => {
 const deleteAgendaitemTreatments = async (agendaitemUri) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {
