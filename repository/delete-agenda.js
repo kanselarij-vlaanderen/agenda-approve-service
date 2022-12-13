@@ -36,29 +36,29 @@ const deleteAgendaitem = async (agendaitemUri) => {
 };
 
 /**
- * @description This function will delete all predicates of a newsletter that is linked to the agendaitem. 
- * @name deleteAgendaitemNewsletterInfo
+ * @description This function will delete all predicates of a newsItem that is linked to the agendaitem.
+ * @name deleteAgendaitemNewsItem
  * @function
  * @param {String} agendaitemUri - The URI of the agendaitem which is the startpoint
  */
-const deleteAgendaitemNewsletterInfo = async (agendaitemUri) => {
+const deleteAgendaitemNewsItem = async (agendaitemUri) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX prov: <http://www.w3.org/ns/prov#>
   PREFIX dct: <http://purl.org/dc/terms/>
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
 
   DELETE {
-    ?newsletter ?p ?o .
+    ?newsItem ?p ?o .
   }
   
   WHERE {
     ?treatment dct:subject ${sparqlEscapeUri(agendaitemUri)} .
     ?treatment a besluit:BehandelingVanAgendapunt .
     OPTIONAL {
-      ?treatment prov:generated ?newsletter .
-      ?newsletter a besluitvorming:NieuwsbriefInfo .
-      ?newsletter ?p ?o .
+      ?newsItem prov:wasDerivedFrom ?treatment .
+      ?newsItem a ext:Nieuwsbericht .
+      ?newsItem ?p ?o .
     }
   }`;
   await mu.update(query);
@@ -144,7 +144,7 @@ const deleteAgendaActivity = async (agendaitemUri) => {
 /** 
  * @description This function will check for each agendaitem on the agenda how many agendaitems are connected to the agenda-activity
  * - If there is exactly 1 agendaitem = clean up the data so subcase is proposable again:
- * newsletters linked to linked treatments
+ * newsItems linked to linked treatments
  * linked treatments
  * deleting the agenda-activity / link between meeting and subcase
  * - If there is 0 or more than 1 = do nothing with those agendaitems (0 can be approval, 2 means there is an agendaitem on an approved agenda)
@@ -186,7 +186,7 @@ const cleanupNewAgendaitems = async (deleteAgendaURI) => {
   const listOfAgendaitemUris = targetAgendaitems.map(uri => uri.agendapunt);
 
   for (const agendaitemUri of listOfAgendaitemUris) {
-    await deleteAgendaitemNewsletterInfo(agendaitemUri);
+    await deleteAgendaitemNewsItem(agendaitemUri);
     await deleteAgendaitemDecisionActivity(agendaitemUri);
     await deleteAgendaitemTreatments(agendaitemUri);
     await deleteAgendaActivity(agendaitemUri);
@@ -233,7 +233,7 @@ const deleteAgendaAndAgendaitems = async (agendaURI) => {
  */
 const cleanupAndDeleteNewAgendaitems = async (agendaitems) => {
   for (const agendaitemUri of agendaitems) {
-    await deleteAgendaitemNewsletterInfo(agendaitemUri);
+    await deleteAgendaitemNewsItem(agendaitemUri);
     await deleteAgendaitemDecisionActivity(agendaitemUri);
     await deleteAgendaitemTreatments(agendaitemUri);
     await deleteAgendaActivity(agendaitemUri);
