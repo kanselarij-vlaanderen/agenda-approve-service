@@ -53,17 +53,14 @@ const closeMeeting = async (agendaURI) => {
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
 
   DELETE {
-    ?meetingURI besluitvorming:behandelt ?oldAgenda ;
-      ext:finaleZittingVersie ?oldStatus .
+    ?meetingURI besluitvorming:behandelt ?oldAgenda .
   }
   INSERT {
-    ?meetingURI besluitvorming:behandelt ${sparqlEscapeUri(agendaURI)} ;
-      ext:finaleZittingVersie "true"^^mulit:boolean .
+    ?meetingURI besluitvorming:behandelt ${sparqlEscapeUri(agendaURI)} .
   }
   WHERE {
     ?meetingURI a besluit:Vergaderactiviteit .
     ${sparqlEscapeUri(agendaURI)} besluitvorming:isAgendaVoor ?meetingURI .
-    OPTIONAL { ?meetingURI ext:finaleZittingVersie ?oldStatus . }
     OPTIONAL { ?meetingURI besluitvorming:behandelt ?oldAgenda . }
   }`;
   return await mu.update(query);
@@ -77,15 +74,11 @@ const reopenMeeting = async (meetingURI) => {
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
 
   DELETE {
-    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda ;
-      ext:finaleZittingVersie ?oldStatus .
+    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda 
   }
-  INSERT {
-    ${sparqlEscapeUri(meetingURI)} ext:finaleZittingVersie "false"^^mulit:boolean .
-  }
+
   WHERE {
     ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
-    OPTIONAL { ${sparqlEscapeUri(meetingURI)} ext:finaleZittingVersie ?oldStatus . }
     OPTIONAL { ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda . }
   }`;
   return await mu.update(query);

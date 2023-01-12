@@ -82,7 +82,6 @@ app.post('/agendas/:id/approve', async (req, res, next) => {
  * actions on design agenda:
  * - set the closed status, modified date
  * actions on meeting:
- * - set ext:finaleZittingVersie to true
  * - set the besluitvorming:behandelt to the closed agenda
  * actions on closed agenda:
  * - enforce formally ok rules:
@@ -137,7 +136,6 @@ app.post('/agendas/:id/close', async (req, res, next) => {
  * actions on last approved agenda:
  * - set the closed status, modified date
  * actions on meeting:
- * - set ext:finaleZittingVersie to true
  * - set the besluitvorming:behandelt to the last approved agenda
  * remove the design agenda (if any)
  * @returns the id of the last approved agenda
@@ -282,7 +280,6 @@ app.delete('/agendas/:id', async (req, res, next) => {
  * @param meetingId: id of the meeting
  *
  * actions on meeting:
- * - set ext:finaleZittingVersie to false
  * - delete the besluitvorming:behandelt relation
  * actions on latest approved agenda:
  * - set the approved status, modified date
