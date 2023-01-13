@@ -49,8 +49,6 @@ const closeMeeting = async (agendaURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mulit: <http://mu.semte.ch/vocabularies/typed-literals/>
-  PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
 
   DELETE {
     ?meetingURI besluitvorming:behandelt ?oldAgenda .
@@ -70,8 +68,6 @@ const reopenMeeting = async (meetingURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
-  PREFIX mulit: <http://mu.semte.ch/vocabularies/typed-literals/>
-  PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
 
   DELETE {
     ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda
