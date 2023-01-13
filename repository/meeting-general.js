@@ -74,12 +74,11 @@ const reopenMeeting = async (meetingURI) => {
   PREFIX ext:  <http://mu.semte.ch/vocabularies/ext/>
 
   DELETE {
-    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda 
+    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda
   }
-
   WHERE {
-    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit .
-    OPTIONAL { ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda . }
+    ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit ;
+      besluitvorming:behandelt ?oldAgenda .
   }`;
   return await mu.update(query);
 }
