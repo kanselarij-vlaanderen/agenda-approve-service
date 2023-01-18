@@ -106,7 +106,7 @@ app.post('/agendas/:id/close', async (req, res, next) => {
       return next(error);
     }
 
-    await agendaGeneral.setAgendaStatusClosed(designAgendaURI);
+    await agendaGeneral.setAgendaStatusApproved(designAgendaURI);
     // rename the recently closed design agenda for clarity
     const closedAgendaURI = designAgendaURI;
     await meetingGeneral.closeMeeting(closedAgendaURI);
@@ -156,7 +156,7 @@ app.post('/meetings/:id/close', async (req, res, next) => {
     if (!lastApprovedAgenda) {
       throw new Error(`There should be at least 1 approved Agenda on meeting with id ${meetingId}`);
     }
-    await agendaGeneral.setAgendaStatusClosed(lastApprovedAgenda.uri);
+    await agendaGeneral.setAgendaStatusApproved(lastApprovedAgenda.uri);
     await meetingGeneral.closeMeeting(lastApprovedAgenda.uri);
     await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO workaround for cache (deleting agenda with only an approval item)
     if (designAgendaURI) {
