@@ -131,7 +131,7 @@ const getDesignAgenda = async (agendaId) => {
 }
 
 /**
- * Gets the last approved (or closed = final approved) agenda from the given meeting
+ * Gets the last approved agenda from the given meeting
  *
  * @param {string} meetingURI - The meeting to query from
  * @returns {*} {lastApprovedId, lastApprovedAgendaUri} or null
