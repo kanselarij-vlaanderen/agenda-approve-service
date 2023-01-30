@@ -45,7 +45,7 @@ const getMeetingURIFromAgenda = async (agendaURI) => {
 
 };
 
-const closeMeeting = async (agendaURI) => {
+const setFinalAgendaOnMeeting = async (agendaURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -64,13 +64,13 @@ const closeMeeting = async (agendaURI) => {
   return await mu.update(query);
 }
 
-const reopenMeeting = async (meetingURI) => {
+const unsetFinalAgendaOnMeeting = async (meetingURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 
   DELETE {
-    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda
+    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda .
   }
   WHERE {
     ${sparqlEscapeUri(meetingURI)} a besluit:Vergaderactiviteit ;
@@ -155,7 +155,7 @@ const getLastApprovedAgenda = async (meetingURI) => {
  * @param {uri} meetingURI
  * @returns {*} agendaURI
  */
-const getLastestAgenda = async (meetingURI) => {
+const getLatestAgenda = async (meetingURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
@@ -204,14 +204,31 @@ const updateLastApprovedAgenda = async (meetingURI, lastApprovedAgendaUri) => {
   return await mu.update(insertQuery);
 }
 
+const getFinalAgendaFromMeetingURI = async (meetingURI) => {
+  const query = `
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+
+  SELECT ?finalAgenda
+  WHERE {
+    ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?finalAgenda .
+  }`;
+
+  const result = await mu.query(query);
+  if (result.results.bindings.length) {
+    return result.results.bindings[0].finalAgenda.value;
+  }
+  return null;
+}
+
 export {
   getMeetingURI,
   getMeetingURIFromAgenda,
-  closeMeeting,
-  reopenMeeting,
+  setFinalAgendaOnMeeting,
+  unsetFinalAgendaOnMeeting,
   getDesignAgenda,
   getDesignAgendaFromMeetingURI,
   getLastApprovedAgenda,
-  getLastestAgenda,
+  getLatestAgenda,
   updateLastApprovedAgenda,
+  getFinalAgendaFromMeetingURI
 };
