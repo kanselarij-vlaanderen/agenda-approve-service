@@ -82,7 +82,6 @@ app.post('/agendas/:id/approve', async (req, res, next) => {
  * actions on design agenda:
  * - set the closed status, modified date
  * actions on meeting:
- * - set ext:finaleZittingVersie to true
  * - set the besluitvorming:behandelt to the closed agenda
  * actions on closed agenda:
  * - enforce formally ok rules:
@@ -109,7 +108,7 @@ app.post('/agendas/:id/close', async (req, res, next) => {
     await agendaGeneral.setAgendaStatusClosed(designAgendaURI);
     // rename the recently closed design agenda for clarity
     const closedAgendaURI = designAgendaURI;
-    await meetingGeneral.closeMeeting(closedAgendaURI);
+    await meetingGeneral.setFinalAgendaOnMeeting(closedAgendaURI);
     // enforcing rules on closed agenda
     const newAgendaitems = await agendaGeneral.selectNewAgendaitemsNotFormallyOk(closedAgendaURI);
     await agendaDeletion.cleanupAndDeleteNewAgendaitems(newAgendaitems);
@@ -137,7 +136,6 @@ app.post('/agendas/:id/close', async (req, res, next) => {
  * actions on last approved agenda:
  * - set the closed status, modified date
  * actions on meeting:
- * - set ext:finaleZittingVersie to true
  * - set the besluitvorming:behandelt to the last approved agenda
  * remove the design agenda (if any)
  * @returns the id of the last approved agenda
@@ -157,7 +155,7 @@ app.post('/meetings/:id/close', async (req, res, next) => {
       throw new Error(`There should be at least 1 approved Agenda on meeting with id ${meetingId}`);
     }
     await agendaGeneral.setAgendaStatusClosed(lastApprovedAgenda.uri);
-    await meetingGeneral.closeMeeting(lastApprovedAgenda.uri);
+    await meetingGeneral.setFinalAgendaOnMeeting(lastApprovedAgenda.uri);
     await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO workaround for cache (deleting agenda with only an approval item)
     if (designAgendaURI) {
       await agendaDeletion.deleteAgendaAndAgendaitems(designAgendaURI);
@@ -230,6 +228,9 @@ app.post('/meetings/:id/close', async (req, res, next) => {
  *
  * get the latest agenda
  * delete the agenda
+ * actions on meeting:
+ * if the meeting was already final and there is a previous approved agenda:
+ * - set the besluitvorming:behandelt to the last approved agenda
  * if this agenda was the last agenda on the meeting:
  * - delete the newsletter on the meeting
  * - delete the meeting
@@ -245,13 +246,14 @@ app.delete('/agendas/:id', async (req, res, next) => {
 
     const agendaURIToCheck = await agendaGeneral.getAgendaURI(agendaId);
     const meetingURI = await meetingGeneral.getMeetingURIFromAgenda(agendaURIToCheck);
-    const agendaURI = await meetingGeneral.getLastestAgenda(meetingURI);
-    if (agendaURI !== agendaURIToCheck) {
+    const finalAgendaURI = await meetingGeneral.getFinalAgendaFromMeetingURI(meetingURI);
+    const latestAgendaURI = await meetingGeneral.getLatestAgenda(meetingURI);
+    if (latestAgendaURI !== agendaURIToCheck) {
       const error =  new Error(`Agenda with id ${agendaId} is not the last agenda.`);
       error.status = 404;
       return next(error);
     }
-    await agendaDeletion.deleteAgendaAndAgendaitems(agendaURI);
+    await agendaDeletion.deleteAgendaAndAgendaitems(latestAgendaURI);
     // We get the last approved agenda after deletion, because it is possible to delete approved agendas
     const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
     let responseData = null;
@@ -259,6 +261,10 @@ app.delete('/agendas/:id', async (req, res, next) => {
       await meetingDeletion.deleteMeetingAndNewsletter(meetingURI);
 
     } else {
+      if (finalAgendaURI === agendaURIToCheck) {
+        // the agenda we deleted was the final agenda, so we have to set the "final agenda" again
+        await meetingGeneral.setFinalAgendaOnMeeting(lastApprovedAgenda.uri);
+      }
       await meetingGeneral.updateLastApprovedAgenda(meetingURI, lastApprovedAgenda.uri); // TODO workaround for cache (deleting agenda with only an approval item)
       responseData = { "type": "agendas", "id": lastApprovedAgenda.id };
     }
@@ -282,7 +288,6 @@ app.delete('/agendas/:id', async (req, res, next) => {
  * @param meetingId: id of the meeting
  *
  * actions on meeting:
- * - set ext:finaleZittingVersie to false
  * - delete the besluitvorming:behandelt relation
  * actions on latest approved agenda:
  * - set the approved status, modified date
@@ -309,7 +314,7 @@ app.post('/meetings/:id/reopen', async (req, res, next) => {
     }
     // Reopen meeting is not needed when adding a design agenda after manual deletion of current one
     // But the triples inserted/deleted don't have any negative effects
-    await meetingGeneral.reopenMeeting(meetingURI);
+    await meetingGeneral.unsetFinalAgendaOnMeeting(meetingURI);
     const lastApprovedAgenda = await meetingGeneral.getLastApprovedAgenda(meetingURI);
     await agendaGeneral.setAgendaStatusApproved(lastApprovedAgenda.uri);
     const [newAgendaId, newAgendaURI] = await agendaApproval.createNewAgenda(lastApprovedAgenda.uri);
