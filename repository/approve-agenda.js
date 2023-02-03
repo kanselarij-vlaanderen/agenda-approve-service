@@ -13,7 +13,7 @@ const batchSize = process.env.BATCH_SIZE || 100;
 
 const AGENDA_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agenda/';
 const AGENDA_ITEM_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agendapunt/';
-const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
+const AGENDA_STATUS_DESIGN = 'http://themis.vlaanderen.be/id/concept/agenda-status/b3d8a99b-0a7e-419e-8474-4b508fa7ab91';
 const AGENDAITEM_TYPE_NOTA = 'http://themis.vlaanderen.be/id/concept/agendapunt-type/dd47a8f8-3ad2-4d5a-8318-66fc02fe80fd';
 const AGENDAITEM_TYPE_REMARK = 'http://themis.vlaanderen.be/id/concept/agendapunt-type/8f8adcf0-58ef-4edc-9e36-0c9095fd76b0';
 

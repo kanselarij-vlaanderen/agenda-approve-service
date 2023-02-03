@@ -4,7 +4,7 @@ import mu, {
 } from 'mu';
 import * as util from '../util/index';
 
-const AGENDA_STATUS_DESIGN = 'http://kanselarij.vo.data.gift/id/agendastatus/2735d084-63d1-499f-86f4-9b69eb33727f';
+const AGENDA_STATUS_DESIGN = 'http://themis.vlaanderen.be/id/concept/agenda-status/b3d8a99b-0a7e-419e-8474-4b508fa7ab91';
 
 const getMeetingURI = async (meetingId) => {
   const query = `
@@ -119,7 +119,7 @@ const getDesignAgenda = async (agendaId) => {
 }
 
 /**
- * Gets the last approved (or closed = final approved) agenda from the given meeting
+ * Gets the last approved agenda from the given meeting
  *
  * @param {string} meetingURI - The meeting to query from
  * @returns {*} {lastApprovedId, lastApprovedAgendaUri} or null
