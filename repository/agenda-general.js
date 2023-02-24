@@ -11,7 +11,7 @@ const AGENDAITEM_FORMALLY_OK = 'http://kanselarij.vo.data.gift/id/concept/goedke
 
 const getAgendaURI = async (agendaId) => {
   const query = `
-   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+   PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
    SELECT DISTINCT ?agenda WHERE {
@@ -140,7 +140,7 @@ const setAgendaStatusDesign = async (agendaURI) => {
 const setAgendaStatus = async (agendaURI, statusURI) => {
   const modifiedDate = new Date();
   const query = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {

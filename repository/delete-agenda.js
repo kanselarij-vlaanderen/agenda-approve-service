@@ -76,7 +76,7 @@ const deleteAgendaitemNewsItem = async (agendaitemUri) => {
   // not deleting them because we can assume that this delete would not be called if any of those are present
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {
@@ -125,7 +125,7 @@ const deleteAgendaActivity = async (agendaitemUri) => {
   const query = `
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
 
   DELETE {
@@ -156,7 +156,7 @@ const cleanupNewAgendaitems = async (deleteAgendaURI) => {
   const selectQuery = `
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
 
@@ -195,7 +195,7 @@ const cleanupNewAgendaitems = async (deleteAgendaURI) => {
 
 const deleteAgenda = async (deleteAgendaURI) => {
   const query = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   DELETE {
     ${sparqlEscapeUri(deleteAgendaURI)} ?p ?o .
