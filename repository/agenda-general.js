@@ -1,7 +1,8 @@
 import mu, {
   sparqlEscapeDateTime,
   sparqlEscapeString,
-  sparqlEscapeUri
+  sparqlEscapeUri,
+  uuid
 } from 'mu';
 import * as util from '../util/index';
 
@@ -139,9 +140,13 @@ const setAgendaStatusDesign = async (agendaURI) => {
 
 const setAgendaStatus = async (agendaURI, statusURI) => {
   const modifiedDate = new Date();
+  const agendaStatusActivity = "http://themis.vlaanderen.be/id/agenda-status-activiteit/" + uuid();
   const query = `
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX prov: <http://www.w3.org/ns/prov#>
+  PREFIX generiek: <http://data.vlaanderen.be/ns/generiek#>
 
   DELETE {
     ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ?oldAgendaStatus ;
@@ -150,6 +155,10 @@ const setAgendaStatus = async (agendaURI, statusURI) => {
   INSERT {
     ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(statusURI)} ;
       dct:modified ${sparqlEscapeDateTime(modifiedDate)} .
+    ${sparqlEscapeUri(agendaStatusActivity)} a ext:AgendaStatusActivity ;
+      prov:startedAtTime ${sparqlEscapeDateTime(modifiedDate)} ;
+      generiek:bewerking ${sparqlEscapeUri(statusURI)} ;
+      prov:used ${sparqlEscapeUri(agendaURI)} .
   }
   WHERE {
     ${sparqlEscapeUri(agendaURI)} a besluitvorming:Agenda ;
