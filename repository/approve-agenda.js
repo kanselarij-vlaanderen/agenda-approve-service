@@ -202,7 +202,7 @@ const rollbackAgendaitems = async (oldAgendaUri) => {
   const ignoredSubjects = [
     'http://purl.org/dc/terms/hasPart',
     'http://www.w3.org/ns/prov#wasRevisionOf',
-    'http://data.vlaanderen.be/ns/besluitvorming#genereertAgendapunt'
+    'https://data.vlaanderen.be/ns/besluitvorming#genereertAgendapunt'
   ];
 
   for (const oldVerUri of agendaitemUris) {
