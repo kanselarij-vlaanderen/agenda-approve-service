@@ -27,7 +27,7 @@ const createNewAgenda = async (oldAgendaURI) => {
   const title = `Agenda ${serialNumber} voor zitting ${moment(meetingDate).format('D-M-YYYY')}`;
   const query = `
 PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 PREFIX dct: <http://purl.org/dc/terms/>
@@ -53,7 +53,7 @@ INSERT DATA {
 const meetingInfoFromAgenda = async (agendaURI) => {
   const query = `
     PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+    PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
     PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
     SELECT ?meeting ?meetingDate (COUNT(DISTINCT(?agenda)) AS ?agendacount) WHERE {
@@ -151,7 +151,7 @@ const copyAgendaitems = async (oldAgendaUri, newAgendaUri) => {
     const newVerUri = AGENDA_ITEM_RESOURCE_BASE + uuid;
     const creationDate = new Date();
     const createNewVer = `
-PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
 PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 PREFIX prov: <http://www.w3.org/ns/prov#>
@@ -202,7 +202,7 @@ const rollbackAgendaitems = async (oldAgendaUri) => {
   const ignoredSubjects = [
     'http://purl.org/dc/terms/hasPart',
     'http://www.w3.org/ns/prov#wasRevisionOf',
-    'http://data.vlaanderen.be/ns/besluitvorming#genereertAgendapunt'
+    'https://data.vlaanderen.be/ns/besluitvorming#genereertAgendapunt'
   ];
 
   for (const oldVerUri of agendaitemUris) {

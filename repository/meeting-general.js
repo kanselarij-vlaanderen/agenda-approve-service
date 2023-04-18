@@ -29,7 +29,7 @@ const getMeetingURI = async (meetingId) => {
 const getMeetingURIFromAgenda = async (agendaURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   SELECT DISTINCT ?meeting WHERE {
     ${sparqlEscapeUri(agendaURI)} besluitvorming:isAgendaVoor ?meeting .
@@ -48,7 +48,7 @@ const getMeetingURIFromAgenda = async (agendaURI) => {
 const setFinalAgendaOnMeeting = async (agendaURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   DELETE {
     ?meetingURI besluitvorming:behandelt ?oldAgenda .
@@ -67,7 +67,7 @@ const setFinalAgendaOnMeeting = async (agendaURI) => {
 const unsetFinalAgendaOnMeeting = async (meetingURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   DELETE {
     ${sparqlEscapeUri(meetingURI)} besluitvorming:behandelt ?oldAgenda .
@@ -82,7 +82,7 @@ const unsetFinalAgendaOnMeeting = async (meetingURI) => {
 const getDesignAgendaFromMeetingURI = async (meetingURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   SELECT ?designAgenda
   WHERE {
@@ -102,7 +102,7 @@ const getDesignAgendaFromMeetingURI = async (meetingURI) => {
 const getDesignAgenda = async (agendaId) => {
   const query = `
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   SELECT ?designAgenda
   WHERE {
@@ -127,7 +127,7 @@ const getDesignAgenda = async (agendaId) => {
 const getLastApprovedAgenda = async (meetingURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
   SELECT (?agendaId AS ?lastApprovedId) (?agenda AS ?lastApprovedAgendaUri)
@@ -158,7 +158,7 @@ const getLastApprovedAgenda = async (meetingURI) => {
 const getLatestAgenda = async (meetingURI) => {
   const query = `
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   SELECT DISTINCT ?agenda
   WHERE {
@@ -188,14 +188,14 @@ const getLatestAgenda = async (meetingURI) => {
 const updateLastApprovedAgenda = async (meetingURI, lastApprovedAgendaUri) => {
   // TODO Workaround for cache not updating when an agenda with only an approval is deleted
   const deleteQuery = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   DELETE DATA {
     ${sparqlEscapeUri(lastApprovedAgendaUri)} besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} .
   }`;
 
   const insertQuery = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   INSERT DATA {
     ${sparqlEscapeUri(lastApprovedAgendaUri)} besluitvorming:isAgendaVoor ${sparqlEscapeUri(meetingURI)} .
@@ -206,7 +206,7 @@ const updateLastApprovedAgenda = async (meetingURI, lastApprovedAgendaUri) => {
 
 const getFinalAgendaFromMeetingURI = async (meetingURI) => {
   const query = `
-  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   SELECT ?finalAgenda
   WHERE {
