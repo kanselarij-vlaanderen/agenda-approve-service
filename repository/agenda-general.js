@@ -10,6 +10,8 @@ const AGENDA_STATUS_DESIGN = 'http://themis.vlaanderen.be/id/concept/agenda-stat
 const AGENDA_STATUS_APPROVED = 'http://themis.vlaanderen.be/id/concept/agenda-status/fff6627e-4c96-4be1-b483-8fefcc6523ca';
 const AGENDAITEM_FORMALLY_OK = 'http://kanselarij.vo.data.gift/id/concept/goedkeurings-statussen/CC12A7DB-A73A-4589-9D53-F3C2F4A40636';
 
+const AGENDA_STATUS_ACTIVITY_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agenda-status-activiteit/';
+
 const getAgendaURI = async (agendaId) => {
   const query = `
    PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
@@ -141,7 +143,7 @@ const setAgendaStatusDesign = async (agendaURI) => {
 const setAgendaStatus = async (agendaURI, statusURI) => {
   const modifiedDate = new Date();
   const agendaStatusActivityId = uuid();
-  const agendaStatusActivity = "http://themis.vlaanderen.be/id/agenda-status-activiteit/" + agendaStatusActivityId;
+  const agendaStatusActivity = AGENDA_STATUS_ACTIVITY_RESOURCE_BASE + agendaStatusActivityId;
   const query = `
   PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
@@ -158,6 +160,7 @@ const setAgendaStatus = async (agendaURI, statusURI) => {
     ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(statusURI)} ;
       dct:modified ${sparqlEscapeDateTime(modifiedDate)} .
     ${sparqlEscapeUri(agendaStatusActivity)} a ext:AgendaStatusActivity ;
+      a prov:Activity ;
       mu:uuid ${sparqlEscapeString(agendaStatusActivityId)} ;
       prov:startedAtTime ${sparqlEscapeDateTime(modifiedDate)} ;
       generiek:bewerking ${sparqlEscapeUri(statusURI)} ;
