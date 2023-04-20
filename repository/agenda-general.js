@@ -142,15 +142,9 @@ const setAgendaStatusDesign = async (agendaURI) => {
 
 const setAgendaStatus = async (agendaURI, statusURI) => {
   const modifiedDate = new Date();
-  const agendaStatusActivityId = uuid();
-  const agendaStatusActivity = AGENDA_STATUS_ACTIVITY_RESOURCE_BASE + agendaStatusActivityId;
   const query = `
   PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
   PREFIX dct: <http://purl.org/dc/terms/>
-  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-  PREFIX prov: <http://www.w3.org/ns/prov#>
-  PREFIX generiek: <http://data.vlaanderen.be/ns/generiek#>
-  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
   DELETE {
     ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ?oldAgendaStatus ;
@@ -159,17 +153,32 @@ const setAgendaStatus = async (agendaURI, statusURI) => {
   INSERT {
     ${sparqlEscapeUri(agendaURI)} besluitvorming:agendaStatus ${sparqlEscapeUri(statusURI)} ;
       dct:modified ${sparqlEscapeDateTime(modifiedDate)} .
+  }
+  WHERE {
+    ${sparqlEscapeUri(agendaURI)} a besluitvorming:Agenda ;
+      dct:modified ?oldModified ;
+      besluitvorming:agendaStatus ?oldAgendaStatus .
+  }`;
+  await mu.update(query);
+  return await addAgendaStatusActivity(agendaURI, statusURI, modifiedDate);
+}
+
+const addAgendaStatusActivity = async (agendaURI, statusURI, modifiedDate) => {
+  const agendaStatusActivityId = uuid();
+  const agendaStatusActivity = AGENDA_STATUS_ACTIVITY_RESOURCE_BASE + agendaStatusActivityId;
+  const query = `
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX prov: <http://www.w3.org/ns/prov#>
+  PREFIX generiek: <http://data.vlaanderen.be/ns/generiek#>
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+
+  INSERT DATA {
     ${sparqlEscapeUri(agendaStatusActivity)} a ext:AgendaStatusActivity ;
       a prov:Activity ;
       mu:uuid ${sparqlEscapeString(agendaStatusActivityId)} ;
       prov:startedAtTime ${sparqlEscapeDateTime(modifiedDate)} ;
       generiek:bewerking ${sparqlEscapeUri(statusURI)} ;
       prov:used ${sparqlEscapeUri(agendaURI)} .
-  }
-  WHERE {
-    ${sparqlEscapeUri(agendaURI)} a besluitvorming:Agenda ;
-      dct:modified ?oldModified ;
-      besluitvorming:agendaStatus ?oldAgendaStatus .
   }`;
   return await mu.update(query);
 
@@ -183,4 +192,5 @@ export {
   selectAgendaitemsForSorting,
   setAgendaStatusApproved,
   setAgendaStatusDesign,
+  addAgendaStatusActivity,
 };
