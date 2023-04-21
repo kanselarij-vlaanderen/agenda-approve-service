@@ -47,6 +47,7 @@ INSERT DATA {
   await mu.update(query).catch(err => {
     console.error(err);
   });
+  await agendaGeneral.addAgendaStatusActivity(newAgendaUri, AGENDA_STATUS_DESIGN, creationDate);
   return [newAgendaUuid, newAgendaUri];
 };
 

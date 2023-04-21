@@ -1,13 +1,16 @@
 import mu, {
   sparqlEscapeDateTime,
   sparqlEscapeString,
-  sparqlEscapeUri
+  sparqlEscapeUri,
+  uuid
 } from 'mu';
 import * as util from '../util/index';
 
 const AGENDA_STATUS_DESIGN = 'http://themis.vlaanderen.be/id/concept/agenda-status/b3d8a99b-0a7e-419e-8474-4b508fa7ab91';
 const AGENDA_STATUS_APPROVED = 'http://themis.vlaanderen.be/id/concept/agenda-status/fff6627e-4c96-4be1-b483-8fefcc6523ca';
 const AGENDAITEM_FORMALLY_OK = 'http://kanselarij.vo.data.gift/id/concept/goedkeurings-statussen/CC12A7DB-A73A-4589-9D53-F3C2F4A40636';
+
+const AGENDA_STATUS_ACTIVITY_RESOURCE_BASE = 'http://themis.vlaanderen.be/id/agenda-status-activiteit/';
 
 const getAgendaURI = async (agendaId) => {
   const query = `
@@ -156,6 +159,27 @@ const setAgendaStatus = async (agendaURI, statusURI) => {
       dct:modified ?oldModified ;
       besluitvorming:agendaStatus ?oldAgendaStatus .
   }`;
+  await mu.update(query);
+  return await addAgendaStatusActivity(agendaURI, statusURI, modifiedDate);
+}
+
+const addAgendaStatusActivity = async (agendaURI, statusURI, modifiedDate) => {
+  const agendaStatusActivityId = uuid();
+  const agendaStatusActivity = AGENDA_STATUS_ACTIVITY_RESOURCE_BASE + agendaStatusActivityId;
+  const query = `
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX prov: <http://www.w3.org/ns/prov#>
+  PREFIX generiek: <http://data.vlaanderen.be/ns/generiek#>
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+
+  INSERT DATA {
+    ${sparqlEscapeUri(agendaStatusActivity)} a ext:AgendaStatusActivity ;
+      a prov:Activity ;
+      mu:uuid ${sparqlEscapeString(agendaStatusActivityId)} ;
+      prov:startedAtTime ${sparqlEscapeDateTime(modifiedDate)} ;
+      generiek:bewerking ${sparqlEscapeUri(statusURI)} ;
+      prov:used ${sparqlEscapeUri(agendaURI)} .
+  }`;
   return await mu.update(query);
 
 }
@@ -168,4 +192,5 @@ export {
   selectAgendaitemsForSorting,
   setAgendaStatusApproved,
   setAgendaStatusDesign,
+  addAgendaStatusActivity,
 };

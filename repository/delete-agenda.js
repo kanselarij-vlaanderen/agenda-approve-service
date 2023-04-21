@@ -193,6 +193,30 @@ const cleanupNewAgendaitems = async (deleteAgendaURI) => {
   }
 }
 
+/**
+ * Deletes agendaStatusActivities for a specific agenda
+ * @name deleteAgendaStatusActivities
+ * @function
+ * @param {String} agendaitemUri - The URI of the agenda to delete the status activities from
+ */
+const deleteAgendaStatusActivities = async (agendaitemUri) => {
+  const query = `
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX prov: <http://www.w3.org/ns/prov#>
+
+  DELETE {
+    ?agendaStatusActivity a ext:AgendaStatusActivity .
+    ?agendaStatusActivity prov:used ${sparqlEscapeUri(agendaitemUri)} . 
+    ?agendaStatusActivity ?p ?o .
+  }
+  WHERE {
+    ?agendaStatusActivity a ext:AgendaStatusActivity .
+    ?agendaStatusActivity prov:used ${sparqlEscapeUri(agendaitemUri)} .
+    ?agendaStatusActivity ?p ?o .
+  }`;
+  await mu.update(query);
+};
+
 const deleteAgenda = async (deleteAgendaURI) => {
   const query = `
   PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
@@ -221,6 +245,8 @@ const deleteAgendaAndAgendaitems = async (agendaURI) => {
   await cleanupNewAgendaitems(agendaURI);
   await util.sleep();
   await deleteAgendaitems(agendaURI);
+  await util.sleep();
+  await deleteAgendaStatusActivities(agendaURI);
   await util.sleep();
   await deleteAgenda(agendaURI);
   await util.sleep();
