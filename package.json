@@ -1,6 +1,6 @@
 {
   "name": "agenda-approve-service",
-  "version": "5.11.0",
+  "version": "5.11.1",
   "description": "Microservice providing endpoints to manage agendas versions",
   "repository": {
     "type": "git",

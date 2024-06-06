@@ -5,8 +5,10 @@ import * as meetingGeneral from './repository/meeting-general';
 import * as agendaApproval from './repository/approve-agenda';
 import * as agendaDeletion from './repository/delete-agenda';
 import * as meetingDeletion from './repository/delete-meeting';
+import { checkServiceBusy, setServiceBusy, sleep } from './util/index';
 
 const cacheClearTimeout = process.env.CACHE_CLEAR_TIMEOUT || 2000;
+const busyClearTimeout = cacheClearTimeout + 5000;
 
 /*
   * NOTE *
@@ -37,6 +39,12 @@ const cacheClearTimeout = process.env.CACHE_CLEAR_TIMEOUT || 2000;
 app.post('/agendas/:id/approve', async (req, res, next) => {
   const agendaId = req.params.id;
   try {
+    checkServiceBusy();
+  } catch (e) {
+    return next(e);
+  }
+  try {
+    setServiceBusy(true);
     if (!agendaId) {
       const error = new Error('Mandatory parameter agenda-id not found.');
       error.status = 400;
@@ -70,6 +78,10 @@ app.post('/agendas/:id/approve', async (req, res, next) => {
     const error = new Error(err.message || 'Something went wrong during the agenda approval.');
     error.status = 500;
     return next(error);
+  } finally {
+    setTimeout(() => {
+      setServiceBusy(false);
+    }, busyClearTimeout);
   }
 });
 
@@ -92,6 +104,12 @@ app.post('/agendas/:id/approve', async (req, res, next) => {
 app.post('/agendas/:id/close', async (req, res, next) => {
   const agendaId = req.params.id;
   try {
+    checkServiceBusy();
+  } catch (e) {
+    return next(e);
+  }
+  try {
+    setServiceBusy(true);
     if (!agendaId) {
       const error = new Error('Mandatory parameter agenda-id not found.');
       error.status = 400;
@@ -124,6 +142,10 @@ app.post('/agendas/:id/close', async (req, res, next) => {
     const error = new Error(err.message || 'Something went wrong during the agenda approval and closing of the meeting.');
     error.status = 500;
     return next(error);
+  } finally {
+    setTimeout(() => {
+      setServiceBusy(false);
+    }, busyClearTimeout);
   }
 });
 
@@ -143,6 +165,12 @@ app.post('/agendas/:id/close', async (req, res, next) => {
 app.post('/meetings/:id/close', async (req, res, next) => {
   const meetingId = req.params.id;
   try {
+    checkServiceBusy();
+  } catch (e) {
+    return next(e);
+  }
+  try {
+    setServiceBusy(true);
     if (!meetingId) {
       const error = new Error('Mandatory parameter meeting-id not found.');
       error.status = 400;
@@ -170,6 +198,10 @@ app.post('/meetings/:id/close', async (req, res, next) => {
     const error = new Error(err.message || 'Something went wrong during the closing of the meeting.');
     error.status = 500;
     return next(error);
+  } finally {
+    setTimeout(() => {
+      setServiceBusy(false);
+    }, busyClearTimeout);
   }
 });
 
@@ -188,6 +220,12 @@ app.post('/meetings/:id/close', async (req, res, next) => {
  app.post('/agendas/:id/reopen', async (req, res, next) => {
   const agendaId = req.params.id;
   try {
+    checkServiceBusy();
+  } catch (e) {
+    return next(e);
+  }
+  try {
+    setServiceBusy(true);
     if (!agendaId) {
       const error = new Error('Mandatory parameter agenda-id not found.');
       error.status = 400;
@@ -216,6 +254,10 @@ app.post('/meetings/:id/close', async (req, res, next) => {
     const error = new Error(err.message || 'Something went wrong during the reopening of the agenda.');
     error.status = 500;
     return next(error);
+  } finally {
+    setTimeout(() => {
+      setServiceBusy(false);
+    }, busyClearTimeout);
   }
 });
 
@@ -238,6 +280,12 @@ app.post('/meetings/:id/close', async (req, res, next) => {
 app.delete('/agendas/:id', async (req, res, next) => {
   const agendaId = req.params.id;
   try {
+    checkServiceBusy();
+  } catch (e) {
+    return next(e);
+  }
+  try {
+    setServiceBusy(true);
     if (!agendaId) {
       const error = new Error('Mandatory parameter agenda-id not found.');
       error.status = 400;
@@ -277,6 +325,10 @@ app.delete('/agendas/:id', async (req, res, next) => {
     const error = new Error(err.message || `Something went wrong while deleting agenda ${agendaId}.`);
     error.status = 500;
     return next(error);
+  } finally {
+    setTimeout(() => {
+      setServiceBusy(false);
+    }, busyClearTimeout);
   }
 });
 
@@ -299,6 +351,12 @@ app.delete('/agendas/:id', async (req, res, next) => {
 app.post('/meetings/:id/reopen', async (req, res, next) => {
   const meetingId = req.params.id;
   try {
+    checkServiceBusy();
+  } catch (e) {
+    return next(e);
+  }
+  try {
+    setServiceBusy(true);
     if (!meetingId) {
       const error = new Error('Mandatory parameter meeting-id not found.');
       error.status = 400;
@@ -329,6 +387,10 @@ app.post('/meetings/:id/reopen', async (req, res, next) => {
     const error = new Error(err.message || 'Something went wrong during the creation of the designagenda.');
     error.status = 500;
     return next(error);
+  } finally {
+    setTimeout(() => {
+      setServiceBusy(false);
+    }, busyClearTimeout);
   }
 });
 

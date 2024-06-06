@@ -19,7 +19,22 @@ function sleep() {
   });
 }
 
+/* Util to reserve the service to avoid concurrency */
+let serviceBusy = false;
+function checkServiceBusy() {
+  if (serviceBusy) {
+    let error = new Error('Agenda service is busy. Please refresh and try again later');
+    error.status = 500;
+    throw error;
+  }
+}
+function setServiceBusy(value) {
+  serviceBusy = value;
+}
+
 export {
   parseSparqlResults,
   sleep,
+  checkServiceBusy,
+  setServiceBusy
 };
