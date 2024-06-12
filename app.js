@@ -8,7 +8,8 @@ import * as meetingDeletion from './repository/delete-meeting';
 import { checkServiceBusy, setServiceBusy, sleep } from './util/index';
 
 const cacheClearTimeout = process.env.CACHE_CLEAR_TIMEOUT || 2000;
-const busyClearTimeout = cacheClearTimeout + 5000;
+const serverBusyTimeout =
+  process.env.SERVER_BUSY_TIMEOUT || cacheClearTimeout + 5000;
 
 /*
   * NOTE *
@@ -81,7 +82,7 @@ app.post('/agendas/:id/approve', async (req, res, next) => {
   } finally {
     setTimeout(() => {
       setServiceBusy(false);
-    }, busyClearTimeout);
+    }, serverBusyTimeout);
   }
 });
 
@@ -145,7 +146,7 @@ app.post('/agendas/:id/close', async (req, res, next) => {
   } finally {
     setTimeout(() => {
       setServiceBusy(false);
-    }, busyClearTimeout);
+    }, serverBusyTimeout);
   }
 });
 
@@ -201,7 +202,7 @@ app.post('/meetings/:id/close', async (req, res, next) => {
   } finally {
     setTimeout(() => {
       setServiceBusy(false);
-    }, busyClearTimeout);
+    }, serverBusyTimeout);
   }
 });
 
@@ -257,7 +258,7 @@ app.post('/meetings/:id/close', async (req, res, next) => {
   } finally {
     setTimeout(() => {
       setServiceBusy(false);
-    }, busyClearTimeout);
+    }, serverBusyTimeout);
   }
 });
 
@@ -328,7 +329,7 @@ app.delete('/agendas/:id', async (req, res, next) => {
   } finally {
     setTimeout(() => {
       setServiceBusy(false);
-    }, busyClearTimeout);
+    }, serverBusyTimeout);
   }
 });
 
@@ -390,7 +391,7 @@ app.post('/meetings/:id/reopen', async (req, res, next) => {
   } finally {
     setTimeout(() => {
       setServiceBusy(false);
-    }, busyClearTimeout);
+    }, serverBusyTimeout);
   }
 });
 
