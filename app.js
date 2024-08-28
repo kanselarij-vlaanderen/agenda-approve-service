@@ -40,7 +40,7 @@ const serverBusyTimeout =
 app.post('/agendas/:id/approve', async (req, res, next) => {
   const agendaId = req.params.id;
   try {
-    checkServiceBusy();
+    await checkServiceBusy();
   } catch (e) {
     return next(e);
   }
@@ -105,7 +105,7 @@ app.post('/agendas/:id/approve', async (req, res, next) => {
 app.post('/agendas/:id/close', async (req, res, next) => {
   const agendaId = req.params.id;
   try {
-    checkServiceBusy();
+    await checkServiceBusy();
   } catch (e) {
     return next(e);
   }
@@ -166,7 +166,7 @@ app.post('/agendas/:id/close', async (req, res, next) => {
 app.post('/meetings/:id/close', async (req, res, next) => {
   const meetingId = req.params.id;
   try {
-    checkServiceBusy();
+    await checkServiceBusy();
   } catch (e) {
     return next(e);
   }
@@ -221,7 +221,7 @@ app.post('/meetings/:id/close', async (req, res, next) => {
  app.post('/agendas/:id/reopen', async (req, res, next) => {
   const agendaId = req.params.id;
   try {
-    checkServiceBusy();
+    await checkServiceBusy();
   } catch (e) {
     return next(e);
   }
@@ -281,7 +281,7 @@ app.post('/meetings/:id/close', async (req, res, next) => {
 app.delete('/agendas/:id', async (req, res, next) => {
   const agendaId = req.params.id;
   try {
-    checkServiceBusy();
+    await checkServiceBusy();
   } catch (e) {
     return next(e);
   }
@@ -352,7 +352,7 @@ app.delete('/agendas/:id', async (req, res, next) => {
 app.post('/meetings/:id/reopen', async (req, res, next) => {
   const meetingId = req.params.id;
   try {
-    checkServiceBusy();
+    await checkServiceBusy();
   } catch (e) {
     return next(e);
   }

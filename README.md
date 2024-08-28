@@ -15,6 +15,7 @@ agenda-approval:
   environment:
     CACHE_CLEAR_TIMEOUT: 2000 # adds a timeout before sending a response, to give the cache time to clear.
     SERVER_BUSY_TIMEOUT: 5000 # keeps the server "busy" for the duration of the timeout after the API call response was sent. 
+    WAIT_ON_BUSY_TIMEOUT: 20000 # allows the service to be busy for 20s before indicating it is busy
 ```
 
 ## Reference
