@@ -169,7 +169,7 @@ const addAgendaStatusActivity = async (agendaURI, statusURI, modifiedDate) => {
   const query = `
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX prov: <http://www.w3.org/ns/prov#>
-  PREFIX generiek: <http://data.vlaanderen.be/ns/generiek#>
+  PREFIX generiek: <https://data.vlaanderen.be/ns/generiek#>
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
 
   INSERT DATA {
