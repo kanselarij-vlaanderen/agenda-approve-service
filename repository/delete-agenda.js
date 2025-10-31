@@ -51,7 +51,7 @@ const deleteAgendaitemNewsItem = async (agendaitemUri) => {
   DELETE {
     ?newsItem ?p ?o .
   }
-  
+
   WHERE {
     ?treatment dct:subject ${sparqlEscapeUri(agendaitemUri)} .
     ?treatment a besluit:BehandelingVanAgendapunt .
@@ -66,7 +66,7 @@ const deleteAgendaitemNewsItem = async (agendaitemUri) => {
 
 
 /**
- * @description This function will delete all predicates of decisionActivity that are linked to the agendaitem treatment. 
+ * @description This function will delete all predicates of decisionActivity that are linked to the agendaitem treatment.
  * @name deleteAgendaitemDecisionActivity
  * @function
  * @param {String} agendaitemUri - The URI of the agendaitem which is the startpoint
@@ -82,7 +82,7 @@ const deleteAgendaitemNewsItem = async (agendaitemUri) => {
   DELETE {
     ?decisionActivity ?p ?o .
   }
-  
+
   WHERE {
     ?decisionActivity ^besluitvorming:heeftBeslissing/dct:subject ${sparqlEscapeUri(agendaitemUri)} .
     ?decisionActivity a besluitvorming:Beslissingsactiviteit .
@@ -92,7 +92,7 @@ const deleteAgendaitemNewsItem = async (agendaitemUri) => {
 };
 
 /**
- * @description This function will delete all predicates of treatments that are linked to the agendaitem. 
+ * @description This function will delete all predicates of treatments that are linked to the agendaitem.
  * @name deleteAgendaitemTreatments
  * @function
  * @param {String} agendaitemUri - The URI of the agendaitem which is the startpoint
@@ -105,7 +105,7 @@ const deleteAgendaitemTreatments = async (agendaitemUri) => {
   DELETE {
     ?treatment ?p ?o .
   }
-  
+
   WHERE {
     ?treatment dct:subject ${sparqlEscapeUri(agendaitemUri)} .
     ?treatment a besluit:BehandelingVanAgendapunt .
@@ -130,7 +130,7 @@ const deleteAgendaActivity = async (agendaitemUri) => {
 
   DELETE {
     ?activity a besluitvorming:Agendering .
-    ?activity besluitvorming:genereertAgendapunt ${sparqlEscapeUri(agendaitemUri)} . 
+    ?activity besluitvorming:genereertAgendapunt ${sparqlEscapeUri(agendaitemUri)} .
     ?activity ?p ?o .
   }
   WHERE {
@@ -141,7 +141,7 @@ const deleteAgendaActivity = async (agendaitemUri) => {
   await mu.update(query);
 };
 
-/** 
+/**
  * @description This function will check for each agendaitem on the agenda how many agendaitems are connected to the agenda-activity
  * - If there is exactly 1 agendaitem = clean up the data so subcase is proposable again:
  * newsItems linked to linked treatments
@@ -162,7 +162,7 @@ const cleanupNewAgendaitems = async (deleteAgendaURI) => {
 
   SELECT DISTINCT ?agendapunt WHERE {
     ?subcase a dossier:Procedurestap .
-    OPTIONAL { 
+    OPTIONAL {
       ?activity besluitvorming:genereertAgendapunt ?agendapunt .
       ?activity a besluitvorming:Agendering .
     }
@@ -171,11 +171,11 @@ const cleanupNewAgendaitems = async (deleteAgendaURI) => {
       SELECT (count(*) AS ?totalitems) ?subcase ?activity WHERE {
         ${sparqlEscapeUri(deleteAgendaURI)} dct:hasPart ?agendaitems .
 
-        ?subcase a dossier:Procedurestap . 
+        ?subcase a dossier:Procedurestap .
         ?activity a besluitvorming:Agendering .
         ?activity besluitvorming:vindtPlaatsTijdens ?subcase .
-        ?activity besluitvorming:genereertAgendapunt ?agendaitems . 
-        ?activity besluitvorming:genereertAgendapunt ?totalitems . 
+        ?activity besluitvorming:genereertAgendapunt ?agendaitems .
+        ?activity besluitvorming:genereertAgendapunt ?totalitems .
       } GROUP BY ?subcase ?activity
     }
   }
@@ -206,7 +206,7 @@ const deleteAgendaStatusActivities = async (agendaitemUri) => {
 
   DELETE {
     ?agendaStatusActivity a ext:AgendaStatusActivity .
-    ?agendaStatusActivity prov:used ${sparqlEscapeUri(agendaitemUri)} . 
+    ?agendaStatusActivity prov:used ${sparqlEscapeUri(agendaitemUri)} .
     ?agendaStatusActivity ?p ?o .
   }
   WHERE {
