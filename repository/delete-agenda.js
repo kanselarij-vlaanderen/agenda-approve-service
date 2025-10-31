@@ -218,20 +218,27 @@ const deleteAgendaStatusActivities = async (agendaitemUri) => {
 };
 
 const deleteAgenda = async (deleteAgendaURI) => {
-  const query = `
+  const outgoingQuery = `
+  PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
+
+  DELETE {
+    ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
+  } WHERE {
+    ${sparqlEscapeUri(deleteAgendaURI)} a besluitvorming:Agenda .
+    ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
+  }`;
+  await mu.update(outgoingQuery);
+
+  const incomingQuery = `
   PREFIX besluitvorming: <https://data.vlaanderen.be/ns/besluitvorming#>
 
   DELETE {
     ${sparqlEscapeUri(deleteAgendaURI)} ?p ?o .
-    ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
   } WHERE {
     ${sparqlEscapeUri(deleteAgendaURI)} a besluitvorming:Agenda ;
       ?p ?o .
-      OPTIONAL {
-        ?s ?pp ${sparqlEscapeUri(deleteAgendaURI)} .
-      }
   }`;
-  await mu.update(query);
+  await mu.update(incomingQuery);
 };
 
 /*
